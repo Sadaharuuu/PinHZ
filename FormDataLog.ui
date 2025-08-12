@@ -58,14 +58,17 @@
              <string>ASCII</string>
             </property>
             <property name="checked">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QRadioButton" name="radio_Hex">
+           <widget class="QRadioButton" name="radio_hex">
             <property name="text">
              <string>HEX</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>

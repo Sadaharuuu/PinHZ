@@ -2,14 +2,45 @@
 #include "ui_FormDataLog.h"
 #include "widget.h"
 
-FormDataLog::FormDataLog(QWidget *parent) :
+FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) :
     QWidget(parent),
     ui(new Ui::FormDataLog)
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
-    m_isShowSend = !ui->radio_show_send->isChecked();
     m_isLogModeChanged = false;
+
+    if (modeCtrl & 0x01)
+    {
+        ui->radio_ASCII->setChecked(true);
+        m_recvMode = 1;
+    }
+    else
+    {
+        ui->radio_hex->setChecked(true);
+        m_recvMode = 2;
+    }
+
+    ui->check_isLog->setChecked(modeCtrl & 0x10);
+    if (modeCtrl & 0x10)
+    {
+        m_isLog = true;
+        if (modeCtrl & 0x04)
+        {
+            ui->radio_ASCII_send->setChecked(true);
+            m_sendMode = 1;
+        }
+        else if (modeCtrl & 0x08)
+        {
+            ui->radio_hex_send->setChecked(true);
+            m_sendMode = 2;
+        }
+        else
+        {
+            ui->radio_show_send->setChecked(true);
+            m_sendMode = 0;
+        }
+    }
 }
 
 FormDataLog::~FormDataLog()
@@ -52,7 +83,7 @@ void FormDataLog::on_dataShow(uint8_t *data, int32_t len, bool isSend)
             str += QString::asprintf("%02X ", data[i]);
     }
 
-    if (ui->check_isLog->isChecked())
+    if (m_isLog)
     {
         // log mode
         QString logInfo = QDateTime().currentDateTime().toString("[yyyy-MM-dd hh:mm:ss.zzz]");
@@ -90,7 +121,7 @@ void FormDataLog::on_check_isLog_toggled(bool checked)
     static int8_t saveSendMode = 0;
     if (checked)
     {
-
+        // 日志模式
         ui->radio_show_send->setEnabled(true);
         ui->radio_ASCII_send->setEnabled(true);
         ui->radio_hex_send->setEnabled(true);
@@ -113,9 +144,30 @@ void FormDataLog::on_check_isLog_toggled(bool checked)
         ui->radio_hex_send->setEnabled(false);
     }
     m_isLogModeChanged = true;
+    m_isLog = checked;
+}
+
+void FormDataLog::on_radio_ASCII_toggled(bool checked)
+{
+    m_recvMode = checked ? 1 : m_recvMode;
+}
+
+void FormDataLog::on_radio_hex_toggled(bool checked)
+{
+    m_recvMode = checked ? 2 : m_recvMode;
 }
 
 void FormDataLog::on_radio_show_send_toggled(bool checked)
 {
-    m_isShowSend = !checked;
+    m_sendMode = checked ? 0 : m_sendMode;
+}
+
+void FormDataLog::on_radio_ASCII_send_toggled(bool checked)
+{
+    m_sendMode = checked ? 1 : m_sendMode;
+}
+
+void FormDataLog::on_radio_hex_send_toggled(bool checked)
+{
+    m_sendMode = checked ? 2 : m_sendMode;
 }

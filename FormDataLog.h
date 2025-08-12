@@ -13,11 +13,13 @@ class FormDataLog : public QWidget
     Q_OBJECT
 
 public:
-    explicit FormDataLog(QWidget *parent = 0);
+    explicit FormDataLog(QWidget *parent = 0, int8_t modeCtrl = 0x11);
     ~FormDataLog();
 
-    bool m_isShowSend;
     bool m_isLogModeChanged;
+    uint8_t m_recvMode;
+    uint8_t m_sendMode;
+    bool m_isLog;
 public slots:
     void on_dataShow(uint8_t *data, int32_t len, bool isSend);
     void on_button_clear_clicked();
@@ -25,6 +27,12 @@ public slots:
 private slots:
     void on_check_isLog_toggled(bool checked);
     void on_radio_show_send_toggled(bool checked);
+    void on_radio_ASCII_toggled(bool checked);
+    void on_radio_hex_toggled(bool checked);
+
+    void on_radio_ASCII_send_toggled(bool checked);
+
+    void on_radio_hex_send_toggled(bool checked);
 
 private:
     Ui::FormDataLog *ui;

@@ -53,24 +53,11 @@ class Widget : public QWidget
 public:
     explicit Widget(QWidget *parent = 0);
     ~Widget();
-
-    QSerialPort *serialPort = nullptr;
-    QMutex m_serialMutex;
-    // int serialPortRxCount; // 测试计数
-
-    QString m_firmPath;
-    QByteArray m_firmData;
-
-    QTimer *m_timer_Run;
-    QTimer *m_timer_SingleShot;
-    int32_t m_timerPeriod;
-
 signals:
     // log
     void showLog(LogLevel level, QString string);
 
     // serial
-    void serialRecvData(unsigned char *buf, int32_t len);
     void serialSend(uint8_t *buf, int32_t len);
 
     // PinHZ
@@ -106,14 +93,23 @@ private slots:
     void on_fillConfDone();
     void on_button_copyCurRow_clicked();
     void on_button_dataLog_clicked();
-    void on_button_PinHZSend_clicked();
+    void on_button_PinHZSend_clicked();  
+    void on_spinBox_replyTime_valueChanged(int arg1);
 
 private:
     Ui::Widget *ui;
     Hex2Dec m_hex2dec;
+    // 串口
+    QSerialPort *serialPort = nullptr;
+    QMutex m_serialMutex;
+    // 定时器
+    QTimer *m_timer_Run;
     // 拼好帧
     FormFillItem *m_fillItemDlg;
     FormDataLog *m_datalogDlg;
+    int8_t m_dataLogMode;
+    int8_t m_autoReplyTimes;
+    int32_t m_autoReplyDelay;
     // 自定义单元格Type的类型，在创建单元格的Item时使用
     enum CellType
     {
