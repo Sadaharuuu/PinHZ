@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>拼好帧V1.01</string>
+   <string>拼好帧V1.02</string>
   </property>
   <property name="windowIcon">
    <iconset resource="resources.qrc">
@@ -841,7 +841,7 @@
                   </size>
                  </property>
                  <property name="text">
-                  <string>数据域长度</string>
+                  <string> 数据域长度</string>
                  </property>
                 </widget>
                </item>
@@ -861,14 +861,31 @@
               </layout>
              </item>
              <item>
-              <widget class="QCheckBox" name="check_autoPinHZ">
-               <property name="text">
-                <string>拼好帧自动挡</string>
+              <layout class="QHBoxLayout" name="horizontalLayout_19">
+               <property name="spacing">
+                <number>2</number>
                </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
+               <item>
+                <widget class="QCheckBox" name="check_autoPinHZ">
+                 <property name="text">
+                  <string>拼好帧自动挡</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="check_fieldPinHZ">
+                 <property name="text">
+                  <string>按字段拼码流</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
              <item>
               <widget class="QPlainTextEdit" name="plainEdit_PinHZ">
@@ -1107,7 +1124,7 @@
               <item>
                <widget class="QLabel" name="label_version">
                 <property name="text">
-                 <string>版本:V1.01</string>
+                 <string>版本:V1.02</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>

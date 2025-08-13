@@ -11,8 +11,6 @@ int32_t g_rowCntHead = 1;
 int32_t g_rowCntData = 0;
 int32_t g_rowCntCheck = 0;
 int32_t g_rowCntTail = 0;
-bool g_isCheckFrm = false;
-int32_t g_checkSumType = 0;
 bool g_isLittleEndian = true;
 bool g_isAutoPinHZMode = true;
 
@@ -283,8 +281,6 @@ void Widget::createItemsARow(int32_t row, QString rowHead, uint8_t dataType, QSt
 
     // 解除阻断
     ui->table_PinHZ->blockSignals(false);
-
-    on_combo_PinHZ_checkChanged(-1);
 }
 
 void Widget::on_showLog(LogLevel level, QString string)
@@ -546,6 +542,8 @@ void Widget::on_button_addItem_clicked()
         g_rowCntData++;
         zoneEnd++;
         updateDataZoneBytes();
+        if (g_rowCntCheck == 1)
+            on_combo_PinHZ_checkChanged(-1);
     }
 }
 
@@ -695,7 +693,11 @@ void Widget::on_button_copyCurRow_clicked()
         switch (rowZone)
         {
         case 1: g_rowCntHead++; break;
-        case 2: g_rowCntData++; break;
+        case 2:
+            g_rowCntData++;
+            if (g_rowCntCheck == 1)
+                on_combo_PinHZ_checkChanged(-1);
+            break;
         case 4: g_rowCntTail++; break;
         default: break;
         }
@@ -704,7 +706,6 @@ void Widget::on_button_copyCurRow_clicked()
     }
 
     updateDataZoneBytes();
-    on_combo_PinHZ_checkChanged(-1);
 }
 
 void Widget::on_button_subCurRow_clicked()
@@ -801,13 +802,24 @@ void Widget::on_button_PinHZ_clicked()
 
     ui->plainEdit_PinHZ->clear(); // 文本编辑器清空
 
-    for (int32_t row = 1; row < ui->table_PinHZ->rowCount() + 1; row++) // 逐行处理
+    for (int32_t row = 0; row < ui->table_PinHZ->rowCount(); row++) // 逐行处理
     {
-        if (g_rowCntCheck == 1 && row == g_rowCntHead + g_rowCntData)
-            continue;
-        cellItem = ui->table_PinHZ->item(row - 1, colDataHex); // 获取单元格的item
+        if (g_rowCntCheck == 1 && m_checkType == 0 && row == g_rowCntHead + g_rowCntData)
+            continue; // 校验位为None不参与拼好帧
+        cellItem = ui->table_PinHZ->item(row, colDataHex); // 获取单元格的item
         str = cellItem->text();                              // 字符串连接
-        if (row != 1)
+        if (!ui->check_fieldPinHZ->isChecked())
+        {
+            QString formatStr = "";
+            for (int32_t i = 0; i < str.length(); i+=2)
+            {
+                if (i != 0)
+                    formatStr += " ";
+                formatStr += str.mid(i, 2);
+            }
+            str = formatStr;
+        }
+        if (row != 0)
             PinHZStr += " ";
         PinHZStr += str;
     }
@@ -1037,14 +1049,18 @@ void Widget::on_button_PinHZLoad_clicked()
 
             ui->table_PinHZ->insertRow(row); // 插入一行，但不会自动为单元格创建item
             createItemsARow(row, colStrList[0], curDataType, colStrList[2], colStrList[3], colStrList[4]); // 为某一行创建items
-
             if (colStrList[0] == "Data")
+            {
                 updateDataZoneBytes();
+                if (g_rowCntCheck == 1)
+                    on_combo_PinHZ_checkChanged(-1);
+            }
         }
     }
     file.close();
     updateDataZoneBytes();
-    on_combo_PinHZ_checkChanged(-1);
+    if (g_isAutoPinHZMode)
+        QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
     emit showLog(LogLevel_INF, QString::asprintf("模板读取成功"));
 }
 
@@ -1120,7 +1136,8 @@ void Widget::on_button_PinHZReverse_clicked()
     if (bufIndex != bufLen)
     {
         // 模板不匹配
-        emit showLog(LogLevel_WAR, "模板不匹配");
+        str = QString::asprintf("模板不匹配, 模板:%dBytes, 数据:%dBytes", bufIndex, bufLen);
+        emit showLog(LogLevel_WAR, str);
         return;
     }
 }
@@ -1167,37 +1184,28 @@ void Widget::on_combo_PinHZ_indexChanged(int index)
 
 void Widget::on_combo_PinHZ_checkChanged(int index)
 {
-    if (g_rowCntCheck == 1)
+    int32_t dataZoneStart = g_rowCntHead, dataZoneEnd = g_rowCntHead + g_rowCntData;
+    int32_t dataType = 0;
+    QTableWidgetItem *item = nullptr;
+    uint8_t checkBuf[2048] = {0, };
+    int32_t bufLen = 0;
+    QString str = "", checkStr = "";
+    QTableWidgetItem *cellItem = nullptr;
+
+    m_checkType = index;
+    if (m_checkType == -1)
     {
-        int32_t dataZoneStart = g_rowCntHead, dataZoneEnd = g_rowCntHead + g_rowCntData;
-        int32_t dataType = 0;
-        QTableWidgetItem *item = nullptr;
-
-        int32_t checkType = index;
-        if (checkType == -1)
-        {
-            // app called
-            QWidget *widget = ui->table_PinHZ->cellWidget(dataZoneEnd, colDataType);
-            QComboBox *comboBox = qobject_cast<QComboBox *>(widget);
-
-            checkType = comboBox->currentIndex();
-        }
-
-        if (checkType == 0)
-        {
-            // None
-            item = ui->table_PinHZ->item(dataZoneEnd, colDataHex);
-            item->setText("00");
-            item = ui->table_PinHZ->item(dataZoneEnd, colDataDec);
-            item->setText("0");
+        // app called
+        if (g_rowCntCheck == 0)
             return;
-        }
+        QWidget *widget = ui->table_PinHZ->cellWidget(dataZoneEnd, colDataType);
+        QComboBox *comboBox = qobject_cast<QComboBox *>(widget);
 
-        uint8_t checkBuf[2048] = {0, };
-        int32_t bufLen = 0;
-        QString str = "", checkStr = "";
-        QTableWidgetItem *cellItem = nullptr;
+        m_checkType = comboBox->currentIndex();
+    }
 
+    if (m_checkType != 0)
+    {
         for (int32_t row = dataZoneStart; row < dataZoneEnd; row++) // 获取数据域码流
         {
             cellItem = ui->table_PinHZ->item(row, colDataHex); // 获取单元格的item
@@ -1219,7 +1227,7 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
             }
         }
 
-        if (checkType <= 3)
+        if (m_checkType <= 3)
         {
             // CheckSum
             uint32_t checkSum = 0;
@@ -1230,36 +1238,40 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
             }
 
             checkStr = QString::number(checkSum);
-            dataType = checkType - 1;
+            dataType = m_checkType - 1;
         }
         else
         {
             // CRC
             return;
         }
-
-        // 阻断信号，避免触发itemChanged
-        ui->table_PinHZ->blockSignals(true);
-
-        // 校验行的Hex item
-        str = m_hex2dec.Dec2HexString(checkStr, \
-                                      dataType, \
-                                      g_isLittleEndian);
-        item = ui->table_PinHZ->item(dataZoneEnd, colDataHex);
-        item->setText(str);
-        // 校验行的Dec item
-        str = m_hex2dec.Hex2DecString(str, \
-                                      dataType, \
-                                      g_isLittleEndian);
-        item = ui->table_PinHZ->item(dataZoneEnd, colDataDec);
-        item->setText(str);
-
-        ui->table_PinHZ->blockSignals(false);
-
-
-        if (g_isAutoPinHZMode)
-            QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
     }
+    else
+    {
+        // None
+        checkStr = "00";
+    }
+
+    // 阻断信号，避免触发itemChanged
+    ui->table_PinHZ->blockSignals(true);
+
+    // 校验行的Hex item
+    str = m_hex2dec.Dec2HexString(checkStr, \
+                                  dataType, \
+                                  g_isLittleEndian);
+    item = ui->table_PinHZ->item(dataZoneEnd, colDataHex);
+    item->setText(str);
+    // 校验行的Dec item
+    str = m_hex2dec.Hex2DecString(str, \
+                                  dataType, \
+                                  g_isLittleEndian);
+    item = ui->table_PinHZ->item(dataZoneEnd, colDataDec);
+    item->setText(str);
+
+    ui->table_PinHZ->blockSignals(false);
+
+    if (g_isAutoPinHZMode)
+        QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
 }
 
 void Widget::on_combo_hexOrder_currentIndexChanged(int index)
@@ -1373,4 +1385,9 @@ void Widget::on_check_autoPinHZ_stateChanged(int state)
 void Widget::on_spinBox_replyTime_valueChanged(int arg1)
 {
     m_autoReplyDelay = arg1;
+}
+
+void Widget::on_check_fieldPinHZ_toggled(bool checked)
+{
+    QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
 }

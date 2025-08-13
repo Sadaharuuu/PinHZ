@@ -93,8 +93,9 @@ private slots:
     void on_fillConfDone();
     void on_button_copyCurRow_clicked();
     void on_button_dataLog_clicked();
-    void on_button_PinHZSend_clicked();  
+    void on_button_PinHZSend_clicked();
     void on_spinBox_replyTime_valueChanged(int arg1);
+    void on_check_fieldPinHZ_toggled(bool checked);
 
 private:
     Ui::Widget *ui;
@@ -104,12 +105,20 @@ private:
     QMutex m_serialMutex;
     // 定时器
     QTimer *m_timer_Run;
-    // 拼好帧
+
+    // 数据填充界面
     FormFillItem *m_fillItemDlg;
+
+    // 数据日志界面
     FormDataLog *m_datalogDlg;
     int8_t m_dataLogMode;
+
+    // 自动回令
     int8_t m_autoReplyTimes;
     int32_t m_autoReplyDelay;
+
+    // 校验
+    int32_t m_checkType;
     // 自定义单元格Type的类型，在创建单元格的Item时使用
     enum CellType
     {
