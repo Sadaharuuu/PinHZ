@@ -4,7 +4,7 @@
 
 #define CONF_PATH "./conf.ini"
 
-uint32_t g_timerCnt_ms = 0;
+uint32_t g_timerCnt_10ms = 0;
 
 // 拼好帧
 int32_t g_rowCntHead = 1;
@@ -47,7 +47,7 @@ Widget::Widget(QWidget *parent) :
     // 定时器
     m_timer_Run = new QTimer(this);
     connect(m_timer_Run, &QTimer::timeout, this, &Widget::on_timerOut_Run);
-    m_timer_Run->setInterval(1);
+    m_timer_Run->setInterval(10);
     m_timer_Run->start();
 
     // 拼好帧
@@ -66,6 +66,9 @@ Widget::Widget(QWidget *parent) :
     m_datalogDlg = new FormDataLog(this, m_dataLogMode);
     connect(this, &Widget::dataShow, m_datalogDlg, &FormDataLog::on_dataShow, Qt::DirectConnection);
 
+    m_crcConfDlg = new FormCRCConf(this);
+    connect(m_crcConfDlg, &FormCRCConf::CRCConfDone, this, &Widget::on_CRCConfDone, Qt::DirectConnection);
+
     connect(this, &Widget::serialSend, this, &Widget::on_serialSend);
     connect(serialPort, &QSerialPort::readyRead, this, &Widget::on_serialRecv, Qt::DirectConnection);
 }
@@ -76,6 +79,7 @@ Widget::~Widget()
     delete m_timer_Run;
     delete m_fillItemDlg;
     delete m_datalogDlg;
+    delete m_crcConfDlg;
     delete serialPort;
     delete ui;
 }
@@ -96,16 +100,17 @@ uint8_t sumCheck(uint8_t *buf, uint32_t len)
  * **************************************************/
 void Widget::on_timerOut_Run()
 {
-    g_timerCnt_ms++;
-    static int32_t replyPeriod = 0;
+    g_timerCnt_10ms++;
+    static int32_t replyDelayCnt = 0;
     if (m_autoReplyTimes > 0)
     {
-        if (replyPeriod++ >= m_autoReplyDelay)
+        if (replyDelayCnt >= m_autoReplyDelay)
         {
             QMetaObject::invokeMethod(ui->button_PinHZSend, "clicked", Qt::QueuedConnection);
-            replyPeriod = 0;
+            replyDelayCnt = 0;
             m_autoReplyTimes--;
         }
+        replyDelayCnt += 10;
     }
 }
 
@@ -1188,9 +1193,11 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
     int32_t dataType = 0;
     QTableWidgetItem *item = nullptr;
     uint8_t checkBuf[2048] = {0, };
+    uint32_t checkCalc = 0;
     int32_t bufLen = 0;
     QString str = "", checkStr = "";
     QTableWidgetItem *cellItem = nullptr;
+    bool isAppCalled = false;
 
     m_checkType = index;
     if (m_checkType == -1)
@@ -1202,6 +1209,7 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
         QComboBox *comboBox = qobject_cast<QComboBox *>(widget);
 
         m_checkType = comboBox->currentIndex();
+        isAppCalled = true;
     }
 
     if (m_checkType != 0)
@@ -1230,20 +1238,37 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
         if (m_checkType <= 3)
         {
             // CheckSum
-            uint32_t checkSum = 0;
-
             for (int32_t i = 0; i < bufLen; i++)
             {
-                checkSum += checkBuf[i];
+                checkCalc += checkBuf[i];
             }
 
-            checkStr = QString::number(checkSum);
+            checkStr = QString::number(checkCalc);
             dataType = m_checkType - 1;
+            if (m_crcConfDlg->isVisible())
+            {
+                m_crcConfDlg->close();
+            }
+        }
+        else if (m_checkType == 4)
+        {
+            // CRC
+            if (isAppCalled)
+            {
+                checkCalc = m_crcConfDlg->m_crcCalc.calcCRC(m_crcConfDlg->m_crcConf, checkBuf, bufLen);
+                checkStr = QString::number(checkCalc);
+                dataType = m_crcConfDlg->m_dataType;
+            }
+            else
+            {
+                m_crcConfDlg->show();
+                return;
+            }
         }
         else
         {
-            // CRC
-            return;
+            // Err
+            checkStr = "00";
         }
     }
     else
@@ -1390,4 +1415,24 @@ void Widget::on_spinBox_replyTime_valueChanged(int arg1)
 void Widget::on_check_fieldPinHZ_toggled(bool checked)
 {
     QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
+}
+
+void Widget::on_CRCConfDone(int8_t validCode)
+{
+    if (g_rowCntCheck == 0)
+        return;
+    QString str = "";
+    if (validCode < 0)
+    {
+        switch (validCode) {
+        case -1: str += "CRC poly"; break;
+        case -2: str += "CRC init"; break;
+        case -3: str += "CRC xorOut"; break;
+        default: str += "CRC未知"; break;
+        }
+        str += "配置错误";
+        emit showLog(LogLevel_ERR, str);
+        return;
+    }
+    on_combo_PinHZ_checkChanged(-1);
 }

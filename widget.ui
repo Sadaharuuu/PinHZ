@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>拼好帧V1.02</string>
+   <string>拼好帧V1.03</string>
   </property>
   <property name="windowIcon">
    <iconset resource="resources.qrc">
@@ -1084,6 +1084,21 @@
           <string>关于</string>
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_3">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_14">
             <item>
@@ -1124,7 +1139,7 @@
               <item>
                <widget class="QLabel" name="label_version">
                 <property name="text">
-                 <string>版本:V1.02</string>
+                 <string>版本:V1.03</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>
@@ -1241,14 +1256,14 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#000000;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; font-weight:600; color:#000000;&quot;&gt;②控制&lt;/span&gt;&lt;span style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:12pt; font-weight:600; color:#000000;&quot;&gt;面&lt;/span&gt;&lt;span style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; font-weight:600; color:#000000;&quot;&gt;板&lt;/span&gt;&lt;/p&gt;
 &lt;ul type=&quot;square&quot; style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;可在&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;①帧格式视图&lt;/span&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;中进行帧格式添加，&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;只有数据域参与校验和长度计算&lt;/span&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;，可以对选中行进行复制，删除，填充，&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;复制和填充的区域必须连续，且不可跨域，不可包含校验域&lt;/span&gt;&lt;/li&gt;
-&lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;点击数据域校验，则可在帧格式中添加校验域，默认None，需进行选择校验算法，目前只支持8，16，32位和校验，添加后按键禁能不可操作，删除校验域后方使能&lt;/span&gt;&lt;/li&gt;
+&lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;点击数据域校验，则可在帧格式中添加校验域，默认None，需进行选择校验算法，目前支持8，16，32位校验和，CRC计算，添加后按键禁能不可操作，删除校验域后方使能&lt;/span&gt;&lt;/li&gt;
 &lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;Endian栏可选择帧格式中的&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;大小端模式&lt;/span&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;，修改会&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;同步修改&lt;/span&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;帧格式内容&lt;/span&gt;&lt;/li&gt;
 &lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;数据域长度可实时&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;自动计算数据域长度&lt;/span&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;，旨在新建帧格式中，如果包含长度字段，可在&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;最后复制帧长度到长度字段&lt;/span&gt;&lt;/li&gt;
 &lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;拼好帧按钮点击后，触发拼好帧逻辑，将帧格式转化为码流&lt;/span&gt;&lt;/li&gt;
 &lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;拼好帧自动挡开启后，帧格式内容变化时，会&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;实时触发&lt;/span&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;拼好帧逻辑&lt;/span&gt;&lt;/li&gt;
 &lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;自动回令拼好帧内容开启后，收到数据时，自动进行回令&lt;/span&gt;&lt;/li&gt;
 &lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;串口发送按钮可以通过串口发送拼好帧内容&lt;/span&gt;&lt;/li&gt;
-&lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;解好帧可将码流复制到拼好帧内容后，进行协议对应的解析，&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;如果帧格式不匹配也会应对到帧&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;
+&lt;li style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; color:#000000;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:24px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:16px;&quot;&gt;解好帧可将码流复制到拼好帧内容后，进行协议对应的解析，&lt;/span&gt;&lt;span style=&quot; font-size:16px; font-weight:600;&quot;&gt;如果帧格式不匹配也会应对到帧, 所以也可以只设置前面部分字段,快速检验&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Helvetica Neue,Helvetica,Arial,sans-serif'; font-size:16px; font-weight:600; color:#000000;&quot;&gt;数据日志模块&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;img src=&quot;:/pic/Readme_DataLog.png&quot; /&gt;&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;

@@ -24,6 +24,7 @@ enum LogLevel
 
 #include "FormFillItem.h"
 #include "FormDataLog.h"
+#include "FormCRCConf.h"
 #include "Hex2Dec.h"
 #include <QCheckBox>
 #include <QComboBox>
@@ -73,7 +74,6 @@ private slots:
     void on_serialRecv();
     void on_serialSend(uint8_t *buf, int32_t len);
     void on_timerOut_Run();
-
     void on_button_picSelect_clicked();
     void on_button_subCurRow_clicked();
     void on_button_addHead_clicked();
@@ -96,7 +96,7 @@ private slots:
     void on_button_PinHZSend_clicked();
     void on_spinBox_replyTime_valueChanged(int arg1);
     void on_check_fieldPinHZ_toggled(bool checked);
-
+    void on_CRCConfDone(int8_t validCode);
 private:
     Ui::Widget *ui;
     Hex2Dec m_hex2dec;
@@ -119,6 +119,8 @@ private:
 
     // 校验
     int32_t m_checkType;
+    FormCRCConf *m_crcConfDlg;
+
     // 自定义单元格Type的类型，在创建单元格的Item时使用
     enum CellType
     {

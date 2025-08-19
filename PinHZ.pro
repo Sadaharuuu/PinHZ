@@ -29,18 +29,23 @@ SOURCES += \
         widget.cpp \
     Hex2Dec.cpp \
     FormFillItem.cpp \
-    FormDataLog.cpp
+    FormDataLog.cpp \
+    AppCalcCRC.cpp \
+    FormCRCConf.cpp
 
 HEADERS += \
         widget.h \
     Hex2Dec.h \
     FormFillItem.h \
-    FormDataLog.h
+    FormDataLog.h \
+    AppCalcCRC.h \
+    FormCRCConf.h
 
 FORMS += \
         widget.ui \
     FormFillItem.ui \
-    FormDataLog.ui
+    FormDataLog.ui \
+    FormCRCConf.ui
 
 RESOURCES += \
     resources.qrc
