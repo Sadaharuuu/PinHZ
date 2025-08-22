@@ -112,6 +112,11 @@ void Widget::on_timerOut_Run()
         }
         replyDelayCnt += 10;
     }
+    if (ui->check_autoSend->isChecked())
+    {
+        if (g_timerCnt_10ms % m_autoSendPeriod == 0)
+            QMetaObject::invokeMethod(ui->button_PinHZSend, "clicked", Qt::QueuedConnection);
+    }
 }
 
 void Widget::saveConf()
@@ -348,11 +353,10 @@ void Widget::on_serialRecv()
 
             emit dataShow(buf, size, false);
 
-            if (g_isAutoPinHZMode)
+            if (ui->check_autoReply->isChecked())
             {
                 m_autoReplyTimes++;
             }
-
         }
     }
     else
@@ -1435,4 +1439,9 @@ void Widget::on_CRCConfDone(int8_t validCode)
         return;
     }
     on_combo_PinHZ_checkChanged(-1);
+}
+
+void Widget::on_spinBox_sendPeriod_valueChanged(int arg1)
+{
+    m_autoSendPeriod = arg1 / 10;
 }

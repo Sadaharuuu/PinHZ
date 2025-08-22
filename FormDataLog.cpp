@@ -8,7 +8,6 @@ FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) :
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
-    m_isLogModeChanged = false;
 
     if (modeCtrl & 0x01)
     {

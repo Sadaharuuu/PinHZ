@@ -20,7 +20,7 @@ public:
     AppCalcCRC m_crcCalc;
 
     // PinHZ
-    uint8_t m_dataType;
+    uint8_t m_dataType = 0;
 signals:
     void CRCConfDone(int8_t validCode);
 private slots:

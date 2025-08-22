@@ -16,10 +16,10 @@ public:
     explicit FormDataLog(QWidget *parent = 0, int8_t modeCtrl = 0x11);
     ~FormDataLog();
 
-    bool m_isLogModeChanged;
-    uint8_t m_recvMode;
-    uint8_t m_sendMode;
-    bool m_isLog;
+    bool m_isLogModeChanged = false;
+    uint8_t m_recvMode = 0;
+    uint8_t m_sendMode = 0;
+    bool m_isLog = false;
 public slots:
     void on_dataShow(uint8_t *data, int32_t len, bool isSend);
     void on_button_clear_clicked();

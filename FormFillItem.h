@@ -16,7 +16,7 @@ public:
     explicit FormFillItem(QWidget *parent = 0);
     ~FormFillItem();
 
-    bool m_isFillValid;
+    bool m_isFillValid = false;
 signals:
     fillConfDone();
 private slots:

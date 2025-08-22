@@ -8,7 +8,6 @@ FormCRCConf::FormCRCConf(QWidget *parent) :
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
-    m_dataType = 0;
 
     on_button_templateSet_clicked();
 }

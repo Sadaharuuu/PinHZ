@@ -97,6 +97,8 @@ private slots:
     void on_spinBox_replyTime_valueChanged(int arg1);
     void on_check_fieldPinHZ_toggled(bool checked);
     void on_CRCConfDone(int8_t validCode);
+    void on_spinBox_sendPeriod_valueChanged(int arg1);
+
 private:
     Ui::Widget *ui;
     Hex2Dec m_hex2dec;
@@ -104,22 +106,25 @@ private:
     QSerialPort *serialPort = nullptr;
     QMutex m_serialMutex;
     // 定时器
-    QTimer *m_timer_Run;
+    QTimer *m_timer_Run = nullptr;
 
     // 数据填充界面
-    FormFillItem *m_fillItemDlg;
+    FormFillItem *m_fillItemDlg = nullptr;
 
     // 数据日志界面
-    FormDataLog *m_datalogDlg;
-    int8_t m_dataLogMode;
+    FormDataLog *m_datalogDlg = nullptr;
+    int8_t m_dataLogMode = 0;
 
     // 自动回令
-    int8_t m_autoReplyTimes;
-    int32_t m_autoReplyDelay;
+    int8_t m_autoReplyTimes = 0;
+    int32_t m_autoReplyDelay = 0;
+
+    // 循环发送
+    int8_t m_autoSendPeriod = 100;
 
     // 校验
-    int32_t m_checkType;
-    FormCRCConf *m_crcConfDlg;
+    int32_t m_checkType = 0;
+    FormCRCConf *m_crcConfDlg = nullptr;
 
     // 自定义单元格Type的类型，在创建单元格的Item时使用
     enum CellType

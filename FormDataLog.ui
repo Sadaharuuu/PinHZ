@@ -196,7 +196,7 @@
        <item>
         <widget class="QPushButton" name="button_clear">
          <property name="text">
-          <string>清除接收</string>
+          <string>清除日志</string>
          </property>
         </widget>
        </item>
