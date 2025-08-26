@@ -15,8 +15,9 @@ bool g_isLittleEndian = true;
 bool g_isAutoPinHZMode = true;
 
 int32_t g_fillStart = 0;
-int32_t g_fillLen = 0;
-uint8_t g_fillBuf[1024] = {0, };
+int32_t g_fillRowCnt = 0;
+int32_t g_fillBytes = 0;
+uint32_t g_fillBuf[4096] = {0, };
 
 uint8_t g_dataLog_recvMode = 0;
 uint8_t g_dataLog_sendMode = 0;
@@ -208,14 +209,14 @@ void Widget::PinHZComboInit(int32_t row, uint8_t dataType)
     ui->table_PinHZ->setCellWidget(row, colDataType, comboBox);
 }
 
-void Widget::updateDataZoneBytes()
+int32_t Widget::getRowsBytes(int32_t rowStart, int32_t rowEnd)
 {
     QWidget *widget = nullptr;
     QComboBox *comboBox = nullptr;
     int8_t dataLen = 0;
-    int32_t dataZoneBytes = 0;
+    int32_t dataBytes = 0;
 
-    for (int32_t row = g_rowCntHead; row < g_rowCntHead + g_rowCntData; row++)
+    for (int32_t row = rowStart; row <= rowEnd; row++)
     {
         widget = ui->table_PinHZ->cellWidget(row, colDataType);
         comboBox = qobject_cast<QComboBox *>(widget);
@@ -233,8 +234,17 @@ void Widget::updateDataZoneBytes()
         case 7: /* sint64 */ dataLen = 8; break;
         default: break;
         }
-        dataZoneBytes += dataLen;
+        dataBytes += dataLen;
     }
+
+    return dataBytes;
+}
+
+void Widget::updateDataZoneBytes()
+{
+    int32_t dataZoneBytes = 0;
+
+    dataZoneBytes = getRowsBytes(g_rowCntHead, g_rowCntHead + g_rowCntData - 1);
 
     ui->lineEdit_DataLen->setText(QString::number(dataZoneBytes));
 }
@@ -372,14 +382,15 @@ void Widget::on_fillConfDone()
         emit showLog(LogLevel_ERR, "填充数据输入错误!");
         return;
     }
-    int32_t bufIndex = 0, dataType = 0;
+    int32_t bufIndex = 0, dataType = 0, value = 0, dataLen = 0;
     QString str = "";
     QTableWidgetItem *item = nullptr;
     QWidget *widget = nullptr;
     QComboBox *comboBox = nullptr;
+    uint8_t *pFillBuf = (uint8_t *)g_fillBuf;
 
     ui->table_PinHZ->blockSignals(true);
-    for (int32_t row = g_fillStart; row < g_fillStart + g_fillLen; row++)
+    for (int32_t row = g_fillStart; row < g_fillStart + g_fillRowCnt; row++)
     {
         if (row >= 0 && row < ui->table_PinHZ->rowCount())
         {
@@ -388,7 +399,28 @@ void Widget::on_fillConfDone()
             dataType = comboBox->currentIndex();
 
             item = ui->table_PinHZ->item(row, colDataHex);
-            str = QString::asprintf("%02X", g_fillBuf[bufIndex++]);
+            if (m_fillItemDlg->m_fillStatus == 1) // 顺序填充
+                str.sprintf("%X", g_fillBuf[bufIndex++]);
+            else // 重复填充
+            {
+                switch (dataType) {
+                case 0: /* uint8  */ /* fall-through */
+                case 4: /* sint8  */ dataLen = 1; break;
+                case 1: /* uint16 */ /* fall-through */
+                case 5: /* sint16 */ dataLen = 2; break;
+                case 8: /* float  */ /* fall-through */
+                case 2: /* uint32 */ /* fall-through */
+                case 6: /* sint32 */ dataLen = 4; break;
+                case 9: /* double */ /* fall-through */
+                case 3: /* uint64 */ /* fall-through */
+                case 7: /* sint64 */ dataLen = 8; break;
+                default: break;
+                }
+                memcpy(&value, pFillBuf + bufIndex, dataLen);
+                bufIndex += dataLen;
+                str.sprintf("%X", value);
+            }
+
             str = m_hex2dec.StrFix(str, dataType, true, g_isLittleEndian);
             item->setText(str);
             str = m_hex2dec.Hex2DecString(str, dataType, g_isLittleEndian);
@@ -399,6 +431,8 @@ void Widget::on_fillConfDone()
     ui->table_PinHZ->blockSignals(false);
 
     on_combo_PinHZ_checkChanged(-1);
+
+    QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
 }
 
 void Widget::on_button_serialRefresh_clicked()
@@ -800,7 +834,8 @@ void Widget::on_button_fillCurRow_clicked()
     }
 
     g_fillStart = rows.first();
-    g_fillLen = rows.size();
+    g_fillRowCnt = rows.size();
+    g_fillBytes = getRowsBytes(rows.first(), rows.last());
     m_fillItemDlg->show();
 }
 
@@ -903,8 +938,8 @@ void Widget::on_button_PinHZLoad_clicked()
         emit showLog(LogLevel_WAR, "未正确选择文件, 放弃处理");
         return;
     }
-    emit showLog(LogLevel_INF, QString::asprintf("开始读取模板, 请稍后..."));
-
+    on_showLog(LogLevel_INF, "开始读取模板, 请稍后...");
+    QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -1070,7 +1105,7 @@ void Widget::on_button_PinHZLoad_clicked()
     updateDataZoneBytes();
     if (g_isAutoPinHZMode)
         QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
-    emit showLog(LogLevel_INF, QString::asprintf("模板读取成功"));
+    emit showLog(LogLevel_INF, "模板读取成功");
 }
 
 void Widget::on_button_PinHZSend_clicked()

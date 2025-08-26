@@ -15,8 +15,9 @@ FormFillItem::~FormFillItem()
     delete ui;
 }
 
-extern uint8_t g_fillBuf[1024];
-extern int32_t g_fillLen;
+extern int32_t g_fillBuf[1024];
+extern int32_t g_fillRowCnt;
+extern int32_t g_fillBytes;
 
 void FormFillItem::on_button_fill_clicked()
 {
@@ -27,6 +28,7 @@ void FormFillItem::on_button_fill_clicked()
     if (ui->groupBox_step->isChecked())
     {
         // 顺序填充
+        m_fillStatus = 1;
         int32_t step = ui->spin_step->value();
         if (step <= 0)
         {
@@ -49,7 +51,7 @@ void FormFillItem::on_button_fill_clicked()
             return;
         }
         fillData = startValue;
-        for (int32_t i = 0; i < g_fillLen; i++)
+        for (int32_t i = 0; i < g_fillRowCnt; i++)
         {
             g_fillBuf[i] = fillData;
             if (startValue <= endValue && fillData <= endValue - step)
@@ -58,14 +60,15 @@ void FormFillItem::on_button_fill_clicked()
                 fillData -= step; // 逆序填充
             else
             {
-                memset(g_fillBuf + i + 1, 0, g_fillLen - i);
-                i = g_fillLen;
+                memset(g_fillBuf + i + 1, 0, (g_fillRowCnt - i) * sizeof(int32_t));
+                break;
             }
         }
     }
     else
     {
         // 重复填充
+        m_fillStatus = 2;
         QString str = ui->lineEdit_repeat->text();
         valueBase = 16;
         uint8_t repeatBuf[1024] = {0,};
@@ -84,11 +87,15 @@ void FormFillItem::on_button_fill_clicked()
             }
         }
 
-        for (int32_t i = 0, j = 0; i < g_fillLen; i++, j++)
+        for (int32_t i = 0; ; i++)
         {
-            if (j == fillIndex)
-                j = 0;
-            g_fillBuf[i] = repeatBuf[j];
+            if (fillIndex * (i + 1) < g_fillBytes)
+                memcpy((uint8_t *)g_fillBuf + fillIndex * i, repeatBuf, fillIndex);
+            else
+            {
+                memcpy((uint8_t *)g_fillBuf + fillIndex * i, repeatBuf, g_fillBytes - fillIndex * i);
+                break;
+            }
         }
     }
     close();

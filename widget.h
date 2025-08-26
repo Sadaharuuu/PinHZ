@@ -142,6 +142,7 @@ private:
         colDataDec,
         colComment
     };
+    int32_t getRowsBytes(int32_t rowStart, int32_t rowEnd);
     void updateDataZoneBytes();
     void createItemsARow(int32_t row, QString rowHead, uint8_t dataType, QString dataHex, QString dataDec, QString comment);
     void PinHZComboInit(int32_t row, uint8_t dataType);

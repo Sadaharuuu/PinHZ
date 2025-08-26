@@ -17,6 +17,7 @@ public:
     ~FormFillItem();
 
     bool m_isFillValid = false;
+    int32_t m_fillStatus = false;
 signals:
     fillConfDone();
 private slots:
