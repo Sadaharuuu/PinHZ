@@ -1,10 +1,12 @@
 #ifndef FORMCRCCONF_H
 #define FORMCRCCONF_H
 
-#include <QWidget>
 #include "AppCalcCRC.h"
+#include <QTextBrowser>
+#include <QWidget>
 
-namespace Ui {
+namespace Ui
+{
 class FormCRCConf;
 }
 
@@ -28,8 +30,13 @@ private slots:
     void on_button_confDone_clicked();
     void on_button_convertPoly_clicked();
 
+    void on_button_generateMeter_clicked();
+
 private:
     Ui::FormCRCConf *ui;
+
+    QWidget *m_CRCMeterWidget = nullptr;
+    QTextBrowser *m_CRCMeterBrowser = nullptr;
 };
 
 #endif // FORMCRCCONF_H

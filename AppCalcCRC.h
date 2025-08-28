@@ -3,7 +3,8 @@
 
 #include <cstdint>
 
-typedef enum {
+typedef enum
+{
     CRC4_ITU = 0,
     CRC5_EPC,
     CRC5_ITU,
@@ -30,12 +31,12 @@ typedef enum {
 
 typedef struct T_CRC_CONF
 {
-    uint8_t width;      // data width
-    uint32_t poly;      // poly
-    uint32_t init;      // init status
-    bool ref_in;        // input direction
-    bool ref_out;       // output direction
-    uint32_t xor_out;   // xor output
+    uint8_t width;    // data width
+    uint32_t poly;    // poly
+    uint32_t init;    // init status
+    bool ref_in;      // input direction
+    bool ref_out;     // output direction
+    uint32_t xor_out; // xor output
 } t_crc_conf;
 
 class AppCalcCRC
@@ -60,7 +61,7 @@ private:
     } e_reflectedMode;
     uint32_t reflected_data(uint32_t data, e_reflectedMode mode);
     uint8_t calcCRC_4(uint8_t poly, uint8_t init, bool ref_in, bool ref_out, uint8_t xor_out, \
-                       const uint8_t *buffer, uint32_t length);
+                      const uint8_t *buffer, uint32_t length);
     uint8_t calcCRC_5(uint8_t poly, uint8_t init, bool ref_in, bool ref_out, uint8_t xor_out, \
                       const uint8_t *buffer, uint32_t length);
     uint8_t calcCRC_6(uint8_t poly, uint8_t init, bool ref_in, bool ref_out, uint8_t xor_out, \

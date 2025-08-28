@@ -1,6 +1,7 @@
+#include "CommonDefine.h"
 #include "FormCRCConf.h"
-#include "ui_FormCRCConf.h"
 #include "Hex2Dec.h"
+#include "ui_FormCRCConf.h"
 
 FormCRCConf::FormCRCConf(QWidget *parent) :
     QWidget(parent),
@@ -15,6 +16,7 @@ FormCRCConf::FormCRCConf(QWidget *parent) :
 FormCRCConf::~FormCRCConf()
 {
     delete ui;
+    delete m_CRCMeterWidget;
 }
 
 void FormCRCConf::on_button_templateSet_clicked()
@@ -166,7 +168,6 @@ void FormCRCConf::on_button_convertPoly_clicked()
         }
         binStr = QString::number(hexPoly, 2);
 
-
         for (int32_t i = 0; i < binStr.length(); i++)
         {
             if (binStr.at(i) == '1')
@@ -192,4 +193,143 @@ void FormCRCConf::on_button_convertPoly_clicked()
         mathStr.chop(1); // 移除最后一个+
         ui->lineEdit_poly_math->setText(mathStr);
     }
+}
+
+void FormCRCConf::on_button_generateMeter_clicked()
+{
+    if (m_CRCMeterWidget == nullptr)
+    {
+        m_CRCMeterWidget = new QWidget(this);
+        m_CRCMeterWidget->setWindowTitle("CRC表");
+        m_CRCMeterWidget->setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint | Qt::WindowMaximizeButtonHint);
+        m_CRCMeterWidget->resize(500, 400);
+        m_CRCMeterBrowser = new QTextBrowser(m_CRCMeterWidget);
+        m_CRCMeterBrowser->setReadOnly(true);
+        m_CRCMeterBrowser->resize(500, 400);
+        QVBoxLayout *layout = new QVBoxLayout(m_CRCMeterWidget);
+        layout->setContentsMargins(0, 0, 0, 0);
+        m_CRCMeterWidget->layout()->addWidget(m_CRCMeterBrowser);
+    }
+
+    bool isValid = false;
+    int8_t validCode = 0;
+    QString str = "";
+    do {
+        m_crcConf.width = ui->spinBox_dataWidth->value();
+
+        if (m_crcConf.width <= 8) m_dataType = 0; // uint8
+        else if (m_crcConf.width <= 16) m_dataType = 1; // uint16
+        else if (m_crcConf.width <= 24) m_dataType = 2; // uint32
+        else if (m_crcConf.width <= 32) m_dataType = 3; // uint32
+        else m_dataType = 0; // uint8
+
+        m_crcConf.poly = ui->lineEdit_poly->text().toUInt(&isValid, 16);
+        if (!isValid)
+        {
+            validCode = -1;
+            break;
+        }
+        m_crcConf.init = ui->lineEdit_init->text().toUInt(&isValid, 16);
+        if (!isValid)
+        {
+            validCode = -2;
+            break;
+        }
+        m_crcConf.ref_in = ui->radio_refIn->isChecked();
+        m_crcConf.ref_out = ui->radio_refOut->isChecked();
+        m_crcConf.xor_out = ui->lineEdit_xorOut->text().toUInt(&isValid, 16);
+        if (!isValid)
+        {
+            validCode = -3;
+            break;
+        }
+    } while (0);
+
+    if (validCode < 0)
+    {
+        str = FONT_COLOR_RED "<ERR> ";
+        switch (validCode)
+        {
+        case -1: str += "CRC poly"; break;
+        case -2: str += "CRC init"; break;
+        case -3: str += "CRC xorOut"; break;
+        default: str += "CRC未知"; break;
+        }
+        str += "配置错误";
+    }
+    else
+    {
+        uint32_t crcCalc = m_crcConf.init & ((1 << m_crcConf.width) - 1); // 初始化位init
+        QString formatStr = "", dataTypeStr = "";
+
+        switch (m_dataType)
+        {
+        case 0: dataTypeStr = "uint8_t "; formatStr = "0x%02X, "; break;
+        case 1: dataTypeStr = "uint16_t "; formatStr = "0x%04X, "; break;
+        case 2: dataTypeStr = "uint32_t "; formatStr = "0x%06X, "; break;
+        case 3: dataTypeStr = "uint32_t "; formatStr = "0x%08X, "; break;
+        default: dataTypeStr = "uint8_t ";; formatStr = "0x%02X, "; break;
+        }
+
+        str = "// *****CRC分段查表法参考数组*****\n";
+        str += QString::asprintf("// * .width = %d\n", m_crcConf.width);
+        str += QString::asprintf("// * .poly = 0x%X\n", m_crcConf.poly);
+        str += QString::asprintf("// * .init = 0x%X\n", m_crcConf.init);
+        str += QString::asprintf("// * .ref_in = %s\n", m_crcConf.ref_in ? "true" : "false");
+        str += QString::asprintf("// * .ref_out = %s\n", m_crcConf.ref_out ? "true" : "false");
+        str += QString::asprintf("// * .init = 0x%X\n", m_crcConf.init);
+        str += "// ****************************\n";
+
+        str += dataTypeStr + "crcTable[256] = {\n";
+        uint8_t singleByte = 0;
+        for (uint32_t i = 0; i < 256; i++, singleByte++)
+        {
+            crcCalc = m_crcCalc.calcCRC(m_crcConf, &singleByte, 1);
+            str += QString::asprintf(formatStr.toUtf8().constData(), crcCalc);
+            if ((i + 1) % 8 == 0)
+                str += "\n";
+        }
+        str += "}\n";
+
+        str += "// *****CRC分段查表法参考代码*****\n";
+        str += "// 1.此处定义通用的CRC配置结构体, 最好放入头文件\n";
+        str += "typedef struct T_CRC_CONF\n";
+        str += "{\n";
+        str += "    uint8_t width;    // data width\n";
+        str += "    uint32_t poly;    // poly\n";
+        str += "    uint32_t init;    // init status\n";
+        str += "    bool ref_in;      // input direction\n";
+        str += "    bool ref_out;     // output direction\n";
+        str += "    uint32_t xor_out; // xor output\n";
+        str += "} t_crc_conf;\n";
+        str += "// 2.此处定义上方生成的CRC表\n";
+        str += dataTypeStr + "g_crcTable[256] = {...}\n";
+        str += "// 3.此处为参考的C风格代码\n";
+        str += "uint8_t refByte(uint8_t byte)\n";
+        str += "{\n";
+        str += "    byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;\n";
+        str += "    byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;\n";
+        str += "    byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;\n";
+        str += "    return byte;\n";
+        str += "}\n";
+        str += dataTypeStr + "calcCRC(const t_crc_conf crcConf, const uint8_t *data, uint32_t len)\n";
+        str += "{\n";
+        str += "    if (data == NULL || len == 0) return;\n";
+        str += "    " + dataTypeStr + "crc = crcConf.init & ((1ULL << crcConf.width) - 1);\n";
+        str += "\n";
+        str += "    " + dataTypeStr + "currByte = 0;\n";
+        str += "    for (uint32_t i = 0; i < len; i++)\n";
+        str += "    {\n";
+        str += "        currByte = crcConf.ref_in ? refByte(data[i]) : data[i];\n";
+        str += "        crc = (crc >> 8) ^ g_crcTable[(crc & 0xFF) ^ currByte];\n";
+        str += "    }\n";
+        str += "    crc = crcConf.ref_out ? refByte(crc) : crc;\n";
+        str += "    crc ^= crcConf.xor_out;\n";
+        str += "\n";
+        str += "    return crc;\n";
+        str += "}\n";
+    }
+
+    m_CRCMeterBrowser->setPlainText(str);
+    m_CRCMeterWidget->show();
 }

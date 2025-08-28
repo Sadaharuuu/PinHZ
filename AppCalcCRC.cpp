@@ -259,7 +259,7 @@ uint8_t AppCalcCRC::calcCRC_6(uint8_t poly, uint8_t init, bool ref_in, bool ref_
 }
 
 uint8_t AppCalcCRC::calcCRC_7(uint8_t poly, uint8_t init, bool ref_in, bool ref_out, uint8_t xor_out,
-                   const uint8_t *buffer, uint32_t length)
+                              const uint8_t *buffer, uint32_t length)
 {
     uint8_t i;
     uint8_t crc;
@@ -315,7 +315,7 @@ uint8_t AppCalcCRC::calcCRC_7(uint8_t poly, uint8_t init, bool ref_in, bool ref_
 }
 
 uint8_t AppCalcCRC::calcCRC_8(uint8_t poly, uint8_t init, bool ref_in, bool ref_out, uint8_t xor_out,
-                   const uint8_t *buffer, uint32_t length)
+                              const uint8_t *buffer, uint32_t length)
 {
     uint32_t i = 0;
     uint8_t crc = init;
@@ -354,7 +354,7 @@ uint8_t AppCalcCRC::calcCRC_8(uint8_t poly, uint8_t init, bool ref_in, bool ref_
 }
 
 uint16_t AppCalcCRC::calcCRC_16(uint16_t poly, uint16_t init, bool ref_in, bool ref_out, uint16_t xor_out,
-                     const uint8_t *buffer, uint32_t length)
+                                const uint8_t *buffer, uint32_t length)
 {
     uint32_t i = 0;
     uint16_t crc = init;
@@ -393,7 +393,7 @@ uint16_t AppCalcCRC::calcCRC_16(uint16_t poly, uint16_t init, bool ref_in, bool 
 }
 
 uint32_t AppCalcCRC::calcCRC_24(uint32_t poly, uint32_t init, bool ref_in, bool ref_out, uint32_t xor_out,
-                     const uint8_t *buffer, uint32_t length)
+                                const uint8_t *buffer, uint32_t length)
 {
     uint32_t i = 0;
     uint32_t crc = init;
@@ -432,7 +432,7 @@ uint32_t AppCalcCRC::calcCRC_24(uint32_t poly, uint32_t init, bool ref_in, bool 
 }
 
 uint32_t AppCalcCRC::calcCRC_32(uint32_t poly, uint32_t init, bool ref_in, bool ref_out, uint32_t xor_out,
-                     const uint8_t *buffer, uint32_t length)
+                                const uint8_t *buffer, uint32_t length)
 {
     uint32_t i = 0;
     uint32_t crc = init;
@@ -477,40 +477,38 @@ uint32_t AppCalcCRC::calcCRC(t_crc_conf crc_conf, const uint8_t *buffer, uint32_
     switch (crc_conf.width)
     {
     case 4:
-    ret = calcCRC_4(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_4(crc_conf.poly, crc_conf.init, \
+                        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 5:
-    ret = calcCRC_5(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_5(crc_conf.poly, crc_conf.init, \
+                        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 6:
-    ret = calcCRC_6(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_6(crc_conf.poly, crc_conf.init, \
+                        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 7:
-    ret = calcCRC_7(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_7(crc_conf.poly, crc_conf.init, \
+                        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 8:
-    ret = calcCRC_8(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_8(crc_conf.poly, crc_conf.init, \
+                        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 16:
-    ret = calcCRC_16(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_16(crc_conf.poly, crc_conf.init, \
+                         crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 24:
-    ret = calcCRC_24(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_24(crc_conf.poly, crc_conf.init, \
+                         crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
     case 32:
-    ret = calcCRC_32(crc_conf.poly, crc_conf.init, \
-        crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
+        ret = calcCRC_32(crc_conf.poly, crc_conf.init, \
+                         crc_conf.ref_in, crc_conf.ref_out, crc_conf.xor_out, buffer, length);
         break;
-
-    default:
-        break;
+    default: break;
     }
 
     return ret;

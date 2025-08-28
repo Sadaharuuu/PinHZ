@@ -4,6 +4,13 @@
 
 #define CONF_PATH "./conf.ini"
 
+#define ZONE_START_HEAD (0)
+#define ZONE_END_HEAD   (g_rowCntHead - 1)
+#define ZONE_START_DATA (g_rowCntHead)
+#define ZONE_END_DATA   (g_rowCntHead + g_rowCntData - 1)
+#define ZONE_START_TAIL (g_rowCntHead + g_rowCntData)
+#define ZONE_END_TAIL   (g_rowCntHead + g_rowCntData + g_rowCntCheck + g_rowCntTail - 1)
+
 uint32_t g_timerCnt_10ms = 0;
 
 // 拼好帧
@@ -29,7 +36,6 @@ Widget::Widget(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    m_dataLogMode = 0x11;
     m_autoReplyTimes = 0;
     m_autoReplyDelay = 0;
 
@@ -39,8 +45,7 @@ Widget::Widget(QWidget *parent) :
     // 初始化串口
     // 限制波特率只能输入数字
     ui->combo_serialBaud->setValidator(new QIntValidator(1, 20000000));
-    serialPort = new QSerialPort(this);
-    // serialPortRxCount = 0;
+    m_serialPort = new QSerialPort(this);
 
     // 提取保存的配置
     loadConf();
@@ -57,8 +62,8 @@ Widget::Widget(QWidget *parent) :
     QHeaderView *colHeader = ui->table_PinHZ->horizontalHeader();
     colHeader->setSectionResizeMode(colDataType, QHeaderView::ResizeToContents); // 数据列保持最小列宽
     colHeader->setSectionResizeMode(colComment, QHeaderView::Stretch);           // 备注列自动拉伸列宽
-    PinHZComboInit(0, 0);                                                          // 第一行的comboBox
-    ui->table_PinHZ->setCurrentCell(0, colDataHex);                                // 选中第一行
+    PinHZComboInit(0, 0);                                                        // 第一行的comboBox
+    ui->table_PinHZ->setCurrentCell(0, colDataHex);                              // 选中第一行
     QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
 
     m_fillItemDlg = new FormFillItem(this);
@@ -66,22 +71,24 @@ Widget::Widget(QWidget *parent) :
 
     m_datalogDlg = new FormDataLog(this, m_dataLogMode);
     connect(this, &Widget::dataShow, m_datalogDlg, &FormDataLog::on_dataShow, Qt::DirectConnection);
+    connect(this, &Widget::updateDataCnt, m_datalogDlg, &FormDataLog::on_updateDataCnt, Qt::QueuedConnection);
 
     m_crcConfDlg = new FormCRCConf(this);
     connect(m_crcConfDlg, &FormCRCConf::CRCConfDone, this, &Widget::on_CRCConfDone, Qt::DirectConnection);
 
     connect(this, &Widget::serialSend, this, &Widget::on_serialSend);
-    connect(serialPort, &QSerialPort::readyRead, this, &Widget::on_serialRecv, Qt::DirectConnection);
+    connect(m_serialPort, &QSerialPort::readyRead, this, &Widget::on_serialRecv, Qt::DirectConnection);
 }
 
 Widget::~Widget()
 {
     saveConf();
+
     delete m_timer_Run;
     delete m_fillItemDlg;
     delete m_datalogDlg;
     delete m_crcConfDlg;
-    delete serialPort;
+    delete m_serialPort;
     delete ui;
 }
 
@@ -163,7 +170,7 @@ void Widget::loadConf()
     index = settings.value("Serial/ParityBit", 0).toInt();
     ui->combo_serialParityBit->setCurrentIndex(index);
 
-    m_dataLogMode = settings.value("DataLog/ModeCtrl", 0x11).toInt();
+    m_dataLogMode = settings.value("DataLog/ModeCtrl", 0x1A).toInt();
 }
 
 int32_t Widget::PinHZDeal(QString str, uint8_t *buf)
@@ -184,6 +191,7 @@ int32_t Widget::PinHZDeal(QString str, uint8_t *buf)
             buf[dealLen++] = str.mid(j, 2).toUInt(&isHex, 16);
         }
     }
+
     return dealLen;
 }
 
@@ -205,7 +213,7 @@ void Widget::PinHZComboInit(int32_t row, uint8_t dataType)
     connect(comboBox, \
             static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), \
             this, \
-            &Widget::on_combo_PinHZ_indexChanged);
+            &Widget::on_combo_PinHZ_dataTypeChanged);
     ui->table_PinHZ->setCellWidget(row, colDataType, comboBox);
 }
 
@@ -244,7 +252,7 @@ void Widget::updateDataZoneBytes()
 {
     int32_t dataZoneBytes = 0;
 
-    dataZoneBytes = getRowsBytes(g_rowCntHead, g_rowCntHead + g_rowCntData - 1);
+    dataZoneBytes = getRowsBytes(ZONE_START_DATA, ZONE_END_DATA);
 
     ui->lineEdit_DataLen->setText(QString::number(dataZoneBytes));
 }
@@ -255,13 +263,13 @@ int8_t Widget::checkRowZone(int32_t row)
 
     if (row < 0 || row > ui->table_PinHZ->rowCount())
         ret = -1; // 行号错误
-    else if (row < g_rowCntHead)
+    else if (row <= ZONE_END_HEAD)
         ret = 1; // 帧头域
-    else if (row < g_rowCntHead + g_rowCntData)
+    else if (row <= ZONE_END_DATA)
         ret = 2; // 数据域
-    else if (g_rowCntCheck != 0 && row == g_rowCntHead + g_rowCntData)
+    else if (g_rowCntCheck > 0 && row == ZONE_START_TAIL)
         ret = 3; // 校验域
-    else if (row < g_rowCntHead + g_rowCntData + g_rowCntCheck + g_rowCntTail)
+    else if (row <= ZONE_END_TAIL)
         ret = 4; // 帧尾域
     else
         ret = 0;
@@ -287,17 +295,17 @@ void Widget::createItemsARow(int32_t row, QString rowHead, uint8_t dataType, QSt
     // dataHex
     item = new QTableWidgetItem(dataHex, ctDataHex);
     item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
-    ui->table_PinHZ->setItem(row, colDataHex, item);               // 为单元格设置Item
+    ui->table_PinHZ->setItem(row, colDataHex, item);             // 为单元格设置Item
 
     // dataDec
     item = new QTableWidgetItem(dataDec, ctDataDec);
     item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
-    ui->table_PinHZ->setItem(row, colDataDec, item);               // 为单元格设置Item
+    ui->table_PinHZ->setItem(row, colDataDec, item);             // 为单元格设置Item
 
     // Comment
     item = new QTableWidgetItem(comment, ctComment);
     item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
-    ui->table_PinHZ->setItem(row, colComment, item);               // 为单元格设置Item
+    ui->table_PinHZ->setItem(row, colComment, item);             // 为单元格设置Item
 
     // 解除阻断
     ui->table_PinHZ->blockSignals(false);
@@ -330,38 +338,43 @@ void Widget::on_showLog(LogLevel level, QString string)
 
 void Widget::on_serialSend(uint8_t *buf, int32_t len)
 {
-    if (serialPort->isOpen())
+    if (m_serialPort->isOpen() == false)
     {
-        m_serialMutex.lock();
-        serialPort->write((char *)buf, len);
-        m_serialMutex.unlock();
-        // if (sendLen == len)
-        //     emit showLog(LogLevel_INF, "串口发送成功");
-        // else if (sendLen == -1)
-        //     emit showLog(LogLevel_INF, "串口发送失败");
-        // else
-        //     emit showLog(LogLevel_INF, "串口发送长度错误");
-        if (m_datalogDlg->m_sendMode != 0)
-            emit dataShow(buf, len, true);
+        emit showLog(LogLevel_WAR, "串口未打开, 尝试自动打开");
+        on_button_serialSwitch_clicked();
+        if (m_serialPort->isOpen() == false)
+            return;
     }
-    else
-    {
-        emit showLog(LogLevel_DBG, "串口未打开");
-    }
+    int32_t sendLen = 0;
+
+    m_serialMutex.lock();
+    sendLen = m_serialPort->write((char *)buf, len);
+    m_serialMutex.unlock();
+
+    m_datalogDlg->m_sendByte += sendLen;
+    m_datalogDlg->m_sendFrm++;
+    updateDataCnt();
+
+    if (m_datalogDlg->m_sendMode != 0)
+        emit dataShow(buf, len, true);
 }
 
 void Widget::on_serialRecv()
 {
-    if (serialPort->bytesAvailable())
+    if (m_serialPort->bytesAvailable())
     {
-        QByteArray data = serialPort->readAll(); // Read all data in QByteArray
+        QByteArray data = m_serialPort->readAll(); // Read all data in QByteArray
 
         if (!data.isEmpty())
         {
             uint8_t *buf = (uint8_t *)(data.data());
-            int32_t size = data.size();
+            int32_t recvLen = data.size();
 
-            emit dataShow(buf, size, false);
+            m_datalogDlg->m_recvByte += recvLen;
+            m_datalogDlg->m_recvFrm++;
+            updateDataCnt();
+
+            emit dataShow(buf, recvLen, false);
 
             if (ui->check_autoReply->isChecked())
             {
@@ -403,7 +416,8 @@ void Widget::on_fillConfDone()
                 str.sprintf("%X", g_fillBuf[bufIndex++]);
             else // 重复填充
             {
-                switch (dataType) {
+                switch (dataType)
+                {
                 case 0: /* uint8  */ /* fall-through */
                 case 4: /* sint8  */ dataLen = 1; break;
                 case 1: /* uint16 */ /* fall-through */
@@ -435,6 +449,27 @@ void Widget::on_fillConfDone()
     QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
 }
 
+void Widget::on_CRCConfDone(int8_t validCode)
+{
+    if (g_rowCntCheck == 0)
+        return;
+    QString str = "";
+    if (validCode < 0)
+    {
+        switch (validCode)
+        {
+        case -1: str += "CRC poly"; break;
+        case -2: str += "CRC init"; break;
+        case -3: str += "CRC xorOut"; break;
+        default: str += "CRC未知"; break;
+        }
+        str += "配置错误";
+        emit showLog(LogLevel_ERR, str);
+        return;
+    }
+    on_combo_PinHZ_checkChanged(-1);
+}
+
 void Widget::on_button_serialRefresh_clicked()
 {
     ui->combo_serialPort->clear();
@@ -455,47 +490,47 @@ void Widget::on_button_serialSwitch_clicked()
         int index;
 
         QSerialPortInfo portInfo(ui->combo_serialPort->currentText());
-        serialPort->setPort(portInfo);
+        m_serialPort->setPort(portInfo);
 
         index = ui->combo_serialBaud->currentText().toInt();
-        serialPort->setBaudRate(index);
+        m_serialPort->setBaudRate(index);
 
         index = ui->combo_serialDataBit->currentIndex();
         switch (index)
         {
-        case 0: serialPort->setDataBits(QSerialPort::Data8); break;
-        case 1: serialPort->setDataBits(QSerialPort::Data7); break;
-        case 2: serialPort->setDataBits(QSerialPort::Data6); break;
-        case 3: serialPort->setDataBits(QSerialPort::Data5); break;
-        default: serialPort->setDataBits(QSerialPort::Data8); break;
+        case 0: m_serialPort->setDataBits(QSerialPort::Data8); break;
+        case 1: m_serialPort->setDataBits(QSerialPort::Data7); break;
+        case 2: m_serialPort->setDataBits(QSerialPort::Data6); break;
+        case 3: m_serialPort->setDataBits(QSerialPort::Data5); break;
+        default: m_serialPort->setDataBits(QSerialPort::Data8); break;
         }
 
         index = ui->combo_serialStopBit->currentIndex();
         switch (index)
         {
-        case 0: serialPort->setStopBits(QSerialPort::OneStop); break;
-        case 1: serialPort->setStopBits(QSerialPort::OneAndHalfStop); break;
-        case 2: serialPort->setStopBits(QSerialPort::TwoStop); break;
-        default: serialPort->setStopBits(QSerialPort::OneStop); break;
+        case 0: m_serialPort->setStopBits(QSerialPort::OneStop); break;
+        case 1: m_serialPort->setStopBits(QSerialPort::OneAndHalfStop); break;
+        case 2: m_serialPort->setStopBits(QSerialPort::TwoStop); break;
+        default: m_serialPort->setStopBits(QSerialPort::OneStop); break;
         }
 
         index = ui->combo_serialParityBit->currentIndex();
         switch (index)
         {
-        case 0: serialPort->setParity(QSerialPort::NoParity); break;
-        case 1: serialPort->setParity(QSerialPort::OddParity); break;
-        case 2: serialPort->setParity(QSerialPort::EvenParity); break;
-        case 3: serialPort->setParity(QSerialPort::MarkParity); break;
-        case 4: serialPort->setParity(QSerialPort::SpaceParity); break;
-        default: serialPort->setParity(QSerialPort::NoParity); break;
+        case 0: m_serialPort->setParity(QSerialPort::NoParity); break;
+        case 1: m_serialPort->setParity(QSerialPort::OddParity); break;
+        case 2: m_serialPort->setParity(QSerialPort::EvenParity); break;
+        case 3: m_serialPort->setParity(QSerialPort::MarkParity); break;
+        case 4: m_serialPort->setParity(QSerialPort::SpaceParity); break;
+        default: m_serialPort->setParity(QSerialPort::NoParity); break;
         }
 
-        serialPort->setReadBufferSize(10240);
+        m_serialPort->setReadBufferSize(10240);
 
-        if (serialPort->open(QIODevice::ReadWrite))
+        if (m_serialPort->open(QIODevice::ReadWrite))
         {
-            serialPort->clear();
-            serialPort->clearError();
+            m_serialPort->clear();
+            m_serialPort->clearError();
             ui->button_serialSwitch->setText("关闭串口");
             ui->button_serialRefresh->setEnabled(false);
             ui->combo_serialPort->setEnabled(false);
@@ -512,7 +547,7 @@ void Widget::on_button_serialSwitch_clicked()
     }
     else
     {
-        serialPort->close();
+        m_serialPort->close();
         ui->button_serialSwitch->setText("打开串口");
         ui->button_serialRefresh->setEnabled(true);
         ui->combo_serialPort->setEnabled(true);
@@ -552,13 +587,13 @@ void Widget::on_button_picSelect_clicked()
 void Widget::on_button_addHead_clicked()
 {
     int32_t curRow = ui->table_PinHZ->currentRow();
-    int32_t zoneStart = 0;
-    int32_t zoneEnd = g_rowCntHead;
+    int32_t zoneStart = ZONE_START_HEAD;
+    int32_t zoneEnd = ZONE_END_HEAD;
 
-    if (curRow >= zoneStart && curRow < zoneEnd)
+    if (curRow >= zoneStart && curRow <= zoneEnd)
         curRow++;
     else
-        curRow = zoneEnd;
+        curRow = zoneEnd + 1;
 
     ui->table_PinHZ->insertRow(curRow);                      // 插入一行，但不会自动为单元格创建item
     createItemsARow(curRow, "Head", 0, "00", "0", "Head"); // 为某一行创建items
@@ -569,21 +604,21 @@ void Widget::on_button_addItem_clicked()
 {
     int32_t curRow = 0;
     int32_t addNum = ui->spinBox_addItem->value();
-    int32_t zoneStart = g_rowCntHead;
-    int32_t zoneEnd = g_rowCntHead + g_rowCntData;
+    int32_t zoneStart = ZONE_START_DATA;
+    int32_t zoneEnd = ZONE_END_DATA;
 
     for (int32_t i = 0; i < addNum; i++)
     {
         curRow = ui->table_PinHZ->currentRow(); // 当前行号
-        if (curRow >= zoneStart && curRow < zoneEnd)
+        if (curRow >= zoneStart && curRow <= zoneEnd)
             curRow++;
         else
-            curRow = zoneEnd;
+            curRow = zoneEnd + 1;
 
         ui->table_PinHZ->insertRow(curRow);                  // 插入一行，但不会自动为单元格创建item
         createItemsARow(curRow, "Data", 0, "00", "0", ""); // 为某一行创建items
         g_rowCntData++;
-        zoneEnd++;
+        zoneEnd = ZONE_END_DATA;
         updateDataZoneBytes();
         if (g_rowCntCheck == 1)
             on_combo_PinHZ_checkChanged(-1);
@@ -592,23 +627,26 @@ void Widget::on_button_addItem_clicked()
 
 void Widget::on_button_checkSet_clicked()
 {
+    int32_t checkRow = ZONE_END_DATA + 1;
+
     if (g_rowCntCheck == 1)
+    {
+        // 校验域已存在
+        ui->table_PinHZ->removeRow(checkRow);
+        g_rowCntCheck = 0;
         return;
-
-    ui->button_checkSet->setEnabled(false);
-
-    int32_t curRow = g_rowCntHead + g_rowCntData;
+    }
 
     // 阻断信号，避免触发itemChanged
     ui->table_PinHZ->blockSignals(true);
 
-    ui->table_PinHZ->insertRow(curRow); // 插入一行，但不会自动为单元格创建item
+    ui->table_PinHZ->insertRow(checkRow); // 插入一行，但不会自动为单元格创建item
     // 为一行的单元格创建 Items
     QTableWidgetItem *item;
 
     // rowHead
     item = new QTableWidgetItem("Check");
-    ui->table_PinHZ->setVerticalHeaderItem(curRow, item);
+    ui->table_PinHZ->setVerticalHeaderItem(checkRow, item);
 
     // hexType
     QComboBox *comboBox = new QComboBox();
@@ -623,43 +661,44 @@ void Widget::on_button_checkSet_clicked()
             this, \
             &Widget::on_combo_PinHZ_checkChanged);
     comboBox->setCurrentIndex(0);
-    ui->table_PinHZ->setCellWidget(curRow, colDataType, comboBox);
+    ui->table_PinHZ->setCellWidget(checkRow, colDataType, comboBox);
 
     // dataHex
     item = new QTableWidgetItem("00", ctDataHex);
     item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    ui->table_PinHZ->setItem(curRow, colDataHex, item); // 为单元格设置Item
+    ui->table_PinHZ->setItem(checkRow, colDataHex, item); // 为单元格设置Item
 
     // dataDec
     item = new QTableWidgetItem("0", ctDataDec);
     item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    ui->table_PinHZ->setItem(curRow, colDataDec, item); // 为单元格设置Item
+    ui->table_PinHZ->setItem(checkRow, colDataDec, item); // 为单元格设置Item
 
     // Comment
     item = new QTableWidgetItem("校验", ctComment);
     item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    ui->table_PinHZ->setItem(curRow, colComment, item); // 为单元格设置Item
+    ui->table_PinHZ->setItem(checkRow, colComment, item); // 为单元格设置Item
+    g_rowCntCheck = 1;
 
     // 解除阻断
     ui->table_PinHZ->blockSignals(false);
-    g_rowCntCheck = 1;
+
 }
 
 void Widget::on_button_addTail_clicked()
 {
     int32_t curRow = ui->table_PinHZ->currentRow(); // 当前行号
-    int32_t zoneStart = g_rowCntHead + g_rowCntData + g_rowCntCheck;
-    int32_t zoneEnd = zoneStart + g_rowCntTail;
+    int32_t zoneStart = ZONE_START_TAIL;
+    int32_t zoneEnd = ZONE_END_TAIL;
 
-    if (curRow >= zoneStart && curRow < zoneEnd)
+    if (curRow >= zoneStart && curRow <= zoneEnd)
         curRow++;
     else
-        curRow = zoneEnd;
+        curRow = zoneEnd + 1;
 
-    ui->table_PinHZ->insertRow(curRow);                      // 插入一行，但不会自动为单元格创建item
+    ui->table_PinHZ->insertRow(curRow);                    // 插入一行，但不会自动为单元格创建item
     createItemsARow(curRow, "Tail", 0, "00", "0", "Tail"); // 为某一行创建items
     g_rowCntTail++;
 }
@@ -753,7 +792,7 @@ void Widget::on_button_copyCurRow_clicked()
 
 void Widget::on_button_subCurRow_clicked()
 {
-    if (g_rowCntHead + g_rowCntData + g_rowCntCheck + g_rowCntTail <= 1)
+    if (ui->table_PinHZ->rowCount() <= 1)
     {
         return;
     }
@@ -772,15 +811,14 @@ void Widget::on_button_subCurRow_clicked()
     {
         if (row >= 0 && row < ui->table_PinHZ->rowCount())
         {
+            if (ui->table_PinHZ->rowCount() <= 1)
+                break;
             ui->table_PinHZ->removeRow(row);
             int8_t rowZone = checkRowZone(row);
             switch (rowZone) {
             case 1: g_rowCntHead--; break;
             case 2: g_rowCntData--; break;
-            case 3:
-                g_rowCntCheck = 0;
-                ui->button_checkSet->setEnabled(true);
-                break;
+            case 3: g_rowCntCheck = 0; break;
             case 4: g_rowCntTail--; break;
             default: break;
             }
@@ -799,7 +837,8 @@ void Widget::on_button_subCurRow_clicked()
     }
 
     updateDataZoneBytes();
-    on_combo_PinHZ_checkChanged(-1);
+    if (g_rowCntCheck)
+        on_combo_PinHZ_checkChanged(-1);
 }
 
 void Widget::on_button_fillCurRow_clicked()
@@ -848,12 +887,13 @@ void Widget::on_button_PinHZ_clicked()
 
     for (int32_t row = 0; row < ui->table_PinHZ->rowCount(); row++) // 逐行处理
     {
-        if (g_rowCntCheck == 1 && m_checkType == 0 && row == g_rowCntHead + g_rowCntData)
+        if (g_rowCntCheck == 1 && m_checkType == 0 && row == ZONE_END_DATA + 1)
             continue; // 校验位为None不参与拼好帧
         cellItem = ui->table_PinHZ->item(row, colDataHex); // 获取单元格的item
         str = cellItem->text();                              // 字符串连接
-        if (!ui->check_fieldPinHZ->isChecked())
+        if (!m_isFieldPinHZ)
         {
+            // 按字节拼好帧
             QString formatStr = "";
             for (int32_t i = 0; i < str.length(); i+=2)
             {
@@ -938,7 +978,7 @@ void Widget::on_button_PinHZLoad_clicked()
         emit showLog(LogLevel_WAR, "未正确选择文件, 放弃处理");
         return;
     }
-    on_showLog(LogLevel_INF, "开始读取模板, 请稍后...");
+    on_showLog(LogLevel_INF, "开始读取模板<br>" FONT_COLOR_DARK_ORANGE + filePath + FONT_COLOR_BLACK "<br>请稍后...");
     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     QFile file(filePath);
 
@@ -1003,63 +1043,14 @@ void Widget::on_button_PinHZLoad_clicked()
                 emit showLog(LogLevel_ERR, QString::asprintf("模板读取失败, %d行数据类型错误:", row) + rowStr);
                 return;
             }
-            if (curDataType == 0)
-            {
-                colStrList[2] = "00";
-                colStrList[3] = "0";
-            }
-            else
-            {
-                colStrList[2] = m_hex2dec.StrFix(colStrList[2], curDataType - 1, true, false);
-                colStrList[3] = m_hex2dec.StrFix(colStrList[3], curDataType - 1, false, false);
-            }
 
-            // 阻断信号，避免触发itemChanged
-            ui->table_PinHZ->blockSignals(true);
+            on_button_checkSet_clicked();
 
-            ui->table_PinHZ->insertRow(row); // 插入一行，但不会自动为单元格创建item
-            g_rowCntCheck = 1;
-            ui->button_checkSet->setEnabled(false);
-
-            QTableWidgetItem *item;
-
-            // rowHead
-            item = new QTableWidgetItem("Check");
-            ui->table_PinHZ->setVerticalHeaderItem(row, item);
-
-            // hexType
-            QComboBox *comboBox = new QComboBox();
-            comboBox->addItem("None");
-            comboBox->addItem("CheckSum-8");
-            comboBox->addItem("CheckSum-16");
-            comboBox->addItem("CheckSum-32");
-            comboBox->addItem("CRC");
+            QComboBox *comboBox = nullptr;
+            QWidget *widget = nullptr;
+            widget = ui->table_PinHZ->cellWidget(row, colDataType);
+            comboBox = qobject_cast<QComboBox *>(widget);
             comboBox->setCurrentIndex(curDataType);
-            connect(comboBox, \
-                    static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), \
-                    this, \
-                    &Widget::on_combo_PinHZ_checkChanged);
-            ui->table_PinHZ->setCellWidget(row, colDataType, comboBox);
-
-            // dataHex
-            item = new QTableWidgetItem(colStrList[2], ctDataHex);
-            item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-            ui->table_PinHZ->setItem(row, colDataHex, item); // 为单元格设置Item
-
-            // dataDec
-            item = new QTableWidgetItem(colStrList[3], ctDataDec);
-            item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-            ui->table_PinHZ->setItem(row, colDataDec, item); // 为单元格设置Item
-
-            // Comment
-            item = new QTableWidgetItem("校验", ctComment);
-            item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter); // 文本对齐格式
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-            ui->table_PinHZ->setItem(row, colComment, item); // 为单元格设置Item
-
-            ui->table_PinHZ->blockSignals(false);
         }
         else
         {
@@ -1093,16 +1084,11 @@ void Widget::on_button_PinHZLoad_clicked()
 
             ui->table_PinHZ->insertRow(row); // 插入一行，但不会自动为单元格创建item
             createItemsARow(row, colStrList[0], curDataType, colStrList[2], colStrList[3], colStrList[4]); // 为某一行创建items
-            if (colStrList[0] == "Data")
-            {
-                updateDataZoneBytes();
-                if (g_rowCntCheck == 1)
-                    on_combo_PinHZ_checkChanged(-1);
-            }
         }
     }
     file.close();
     updateDataZoneBytes();
+    on_combo_PinHZ_checkChanged(-1);
     if (g_isAutoPinHZMode)
         QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
     emit showLog(LogLevel_INF, "模板读取成功");
@@ -1140,7 +1126,8 @@ void Widget::on_button_PinHZReverse_clicked()
         comboBox = qobject_cast<QComboBox *>(widget);
         dataType = comboBox->currentIndex();
 
-        switch (dataType) {
+        switch (dataType)
+        {
         case 0: /* uint8  */ /* fall-through */
         case 4: /* sint8  */ dataLen = 1; break;
         case 1: /* uint16 */ /* fall-through */
@@ -1153,10 +1140,11 @@ void Widget::on_button_PinHZReverse_clicked()
         case 7: /* sint64 */ dataLen = 8; break;
         default: break;
         }
-        if (row == g_rowCntHead + g_rowCntData)
+        if (row == ZONE_END_DATA + 1)
         {
             // check
-            switch (dataType) {
+            switch (dataType)
+            {
             case 0: dataLen = 0; break; // None
             case 1: dataLen = 1; dataType = 0; break; // checkSum8
             case 2: dataLen = 2; dataType = 1; break; // checkSum16
@@ -1191,16 +1179,17 @@ void Widget::on_button_dataLog_clicked()
     m_datalogDlg->show();
 }
 
-void Widget::on_combo_PinHZ_indexChanged(int index)
+void Widget::on_combo_PinHZ_dataTypeChanged(int index)
 {
     QComboBox *comboBox = dynamic_cast<QComboBox *>(this->sender());
     int32_t row = 0;
-    for (row = 0; row < g_rowCntHead + g_rowCntData + g_rowCntTail; row++)
+    for (row = 0; row < ui->table_PinHZ->rowCount(); row++)
     {
+        // 遍历找到对应的行
         if (ui->table_PinHZ->cellWidget(row, colDataType) == comboBox)
             break;
     }
-    if (row == g_rowCntHead + g_rowCntData + g_rowCntTail)
+    if (row == ui->table_PinHZ->rowCount())
         return;
 
     // 阻断信号，避免触发itemChanged
@@ -1221,14 +1210,19 @@ void Widget::on_combo_PinHZ_indexChanged(int index)
     item->setText(str);
     ui->table_PinHZ->blockSignals(false);
 
-    if (row >= g_rowCntHead && row < g_rowCntHead + g_rowCntData)
+    if (checkRowZone(row) == 2)
         updateDataZoneBytes();
     on_combo_PinHZ_checkChanged(-1);
 }
 
 void Widget::on_combo_PinHZ_checkChanged(int index)
 {
-    int32_t dataZoneStart = g_rowCntHead, dataZoneEnd = g_rowCntHead + g_rowCntData;
+    if (g_rowCntCheck == 0)
+    {
+        emit showLog(LogLevel_DBG, QString::asprintf("校验字段不存在, 且触发了校验:%d", index));
+        return;
+    }
+    int32_t dataZoneStart = ZONE_START_DATA, dataZoneEnd = ZONE_END_DATA;
     int32_t dataType = 0;
     QTableWidgetItem *item = nullptr;
     uint8_t checkBuf[2048] = {0, };
@@ -1244,7 +1238,7 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
         // app called
         if (g_rowCntCheck == 0)
             return;
-        QWidget *widget = ui->table_PinHZ->cellWidget(dataZoneEnd, colDataType);
+        QWidget *widget = ui->table_PinHZ->cellWidget(dataZoneEnd + 1, colDataType);
         QComboBox *comboBox = qobject_cast<QComboBox *>(widget);
 
         m_checkType = comboBox->currentIndex();
@@ -1253,7 +1247,7 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
 
     if (m_checkType != 0)
     {
-        for (int32_t row = dataZoneStart; row < dataZoneEnd; row++) // 获取数据域码流
+        for (int32_t row = dataZoneStart; row <= dataZoneEnd; row++) // 获取数据域码流
         {
             cellItem = ui->table_PinHZ->item(row, colDataHex); // 获取单元格的item
             str = cellItem->text();
@@ -1323,13 +1317,13 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
     str = m_hex2dec.Dec2HexString(checkStr, \
                                   dataType, \
                                   g_isLittleEndian);
-    item = ui->table_PinHZ->item(dataZoneEnd, colDataHex);
+    item = ui->table_PinHZ->item(dataZoneEnd + 1, colDataHex);
     item->setText(str);
     // 校验行的Dec item
     str = m_hex2dec.Hex2DecString(str, \
                                   dataType, \
                                   g_isLittleEndian);
-    item = ui->table_PinHZ->item(dataZoneEnd, colDataDec);
+    item = ui->table_PinHZ->item(dataZoneEnd + 1, colDataDec);
     item->setText(str);
 
     ui->table_PinHZ->blockSignals(false);
@@ -1453,27 +1447,8 @@ void Widget::on_spinBox_replyTime_valueChanged(int arg1)
 
 void Widget::on_check_fieldPinHZ_toggled(bool checked)
 {
+    m_isFieldPinHZ = checked;
     QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
-}
-
-void Widget::on_CRCConfDone(int8_t validCode)
-{
-    if (g_rowCntCheck == 0)
-        return;
-    QString str = "";
-    if (validCode < 0)
-    {
-        switch (validCode) {
-        case -1: str += "CRC poly"; break;
-        case -2: str += "CRC init"; break;
-        case -3: str += "CRC xorOut"; break;
-        default: str += "CRC未知"; break;
-        }
-        str += "配置错误";
-        emit showLog(LogLevel_ERR, str);
-        return;
-    }
-    on_combo_PinHZ_checkChanged(-1);
 }
 
 void Widget::on_spinBox_sendPeriod_valueChanged(int arg1)

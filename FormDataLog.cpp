@@ -1,10 +1,11 @@
+#include "CommonDefine.h"
 #include "FormDataLog.h"
 #include "ui_FormDataLog.h"
-#include "widget.h"
+#include <QDateTime>
+#include <QScrollBar>
 
-FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) :
-    QWidget(parent),
-    ui(new Ui::FormDataLog)
+FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) : QWidget(parent),
+                                                             ui(new Ui::FormDataLog)
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
@@ -40,6 +41,8 @@ FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) :
             m_sendMode = 0;
         }
     }
+
+    on_pushButton_clicked();
 }
 
 FormDataLog::~FormDataLog()
@@ -66,7 +69,7 @@ void FormDataLog::on_dataShow(uint8_t *data, int32_t len, bool isSend)
 {
     QString str = "", dataColor = isSend ? FONT_COLOR_BLUEGREEN : FONT_COLOR_DARK_ORANGE;
     bool isASCII = isSend ? ui->radio_ASCII_send->isChecked() ? true : false \
-                    : ui->radio_ASCII->isChecked() ? true : false;
+                            : ui->radio_ASCII->isChecked() ? true : false;
     if (m_isLogModeChanged)
     {
         if (!ui->check_isLog->isChecked())
@@ -169,4 +172,20 @@ void FormDataLog::on_radio_ASCII_send_toggled(bool checked)
 void FormDataLog::on_radio_hex_send_toggled(bool checked)
 {
     m_sendMode = checked ? 2 : m_sendMode;
+}
+
+void FormDataLog::on_updateDataCnt()
+{
+    QString str = "";
+
+    str = QString::asprintf("Frm(R/S): %d/%d", m_recvFrm, m_sendFrm);
+    ui->lineEdit_frmCnt->setText(str);
+    str = QString::asprintf("Bytes(R/S): %d/%d", m_recvByte, m_sendByte);
+    ui->lineEdit_byteCnt->setText(str);
+}
+
+void FormDataLog::on_pushButton_clicked()
+{
+    m_recvFrm = m_recvByte = m_sendFrm = m_sendByte = 0;
+    on_updateDataCnt();
 }

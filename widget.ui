@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>拼好帧V1.05</string>
+   <string>拼好帧V1.06</string>
   </property>
   <property name="windowIcon">
    <iconset resource="resources.qrc">
@@ -357,6 +357,20 @@
          </item>
          <item>
           <widget class="QPushButton" name="button_dataLog">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>12</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+             <underline>true</underline>
+            </font>
+           </property>
            <property name="text">
             <string>数据日志</string>
            </property>
@@ -1201,7 +1215,7 @@
               <item>
                <widget class="QLabel" name="label_version">
                 <property name="text">
-                 <string>版本:V1.05</string>
+                 <string>版本:V1.06</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>

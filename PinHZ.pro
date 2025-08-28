@@ -39,7 +39,8 @@ HEADERS += \
     FormFillItem.h \
     FormDataLog.h \
     AppCalcCRC.h \
-    FormCRCConf.h
+    FormCRCConf.h \
+    CommonDefine.h
 
 FORMS += \
         widget.ui \

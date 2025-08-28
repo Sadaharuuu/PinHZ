@@ -1,35 +1,19 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
-#define FONT_COLOR_BLACK        "<font color=\"#000000\">"
-#define FONT_COLOR_WHITE        "<font color=\"#FFFFFF\">"
-#define FONT_COLOR_RED          "<font color=\"#FF0000\">"
-#define FONT_COLOR_GREEN        "<font color=\"#00FF00\">"
-#define FONT_COLOR_BLUE         "<font color=\"#0000FF\">"
-#define FONT_COLOR_CYAN         "<font color=\"#00FFFF\">"
-#define FONT_COLOR_PINK         "<font color=\"#FF00FF\">"
-#define FONT_COLOR_YELLOW       "<font color=\"#FFFF00\">"
-
-#define FONT_COLOR_DARK_ORANGE  "<font color=\"#FF8C00\">"
-#define FONT_COLOR_BLUEGREEN    "<font color=\"#00B3B3\">"
-#define FONT_COLOR_BLUEVIOLET   "<font color=\"#8A2BE2\">"
-
-enum LogLevel
-{
-    LogLevel_DBG = 0,
-    LogLevel_INF,
-    LogLevel_WAR,
-    LogLevel_ERR,
-};
-
-#include "FormFillItem.h"
-#include "FormDataLog.h"
+#include "CommonDefine.h"
 #include "FormCRCConf.h"
+#include "FormDataLog.h"
+#include "FormFillItem.h"
 #include "Hex2Dec.h"
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFormLayout>
+#include <QIcon>
 #include <QMap>
+#include <QScrollBar>
 #include <QSerialPortInfo>
 #include <QTableWidgetItem>
 #include <QTimer>
@@ -37,10 +21,6 @@ enum LogLevel
 #include <QVector>
 #include <QWidget>
 #include <QtSerialPort>
-#include <QFileDialog>
-#include <QFileInfo>
-#include <QIcon>
-#include <QScrollBar>
 
 namespace Ui
 {
@@ -63,6 +43,7 @@ signals:
 
     // PinHZ
     void dataShow(uint8_t *data, int32_t len, bool isSend);
+    void updateDataCnt();
 
 private slots:
     // Log
@@ -81,7 +62,7 @@ private slots:
     void on_button_addTail_clicked();
     void on_button_PinHZ_clicked();
     void on_table_PinHZ_itemChanged(QTableWidgetItem *item);
-    void on_combo_PinHZ_indexChanged(int index);
+    void on_combo_PinHZ_dataTypeChanged(int index);
     void on_combo_PinHZ_checkChanged(int index);
     void on_button_checkSet_clicked();
     void on_combo_hexOrder_currentIndexChanged(int index);
@@ -103,7 +84,7 @@ private:
     Ui::Widget *ui;
     Hex2Dec m_hex2dec;
     // 串口
-    QSerialPort *serialPort = nullptr;
+    QSerialPort *m_serialPort = nullptr;
     QMutex m_serialMutex;
     // 定时器
     QTimer *m_timer_Run = nullptr;
@@ -113,7 +94,14 @@ private:
 
     // 数据日志界面
     FormDataLog *m_datalogDlg = nullptr;
+    // bit 0-1: recv:                01 = ASCII     10 = HEX
+    // bit 2-3: send: 00 = dont show 01 = ASCII     10 = HEX
+    // bit 4-5: log:  00 = notLog    01 = isLog
+    // default : 0x1A, logMode, all Hex
     int8_t m_dataLogMode = 0;
+
+    // 是否用字段拼好帧 EB 90 01 02 03 04 or EB90 01020304
+    bool m_isFieldPinHZ = true;
 
     // 自动回令
     int8_t m_autoReplyTimes = 0;

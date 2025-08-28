@@ -361,5 +361,6 @@ bool Hex2Dec::HexStrTurnOrder(QString &srcStr)
         str += srcStr.mid(i, 2);
     }
     srcStr = str;
+
     return true;
 }
