@@ -11,13 +11,13 @@ Hex2Dec::~Hex2Dec()
 }
 
 /* **************************************************
- * @brief 字符串转换
+ * @brief Hex String convert to Dec
  * @para:
  *      [input]hexStr: hex string
- *      [input]dataType: uint8 = 0, ..., uint64, int..., float, double
+ *      [input]dataType: uint8, int8, ..., int64, float, double
  *      [input]byteOrder: Little-Endian = 0, Big-Endian
  * @return:
- *      Dec String
+ *      Dec String, return 0 when str error
  * **************************************************/
 QString Hex2Dec::Hex2DecString(QString hexStr, uint8_t dataType, bool isLittleEndian)
 {
@@ -28,23 +28,23 @@ QString Hex2Dec::Hex2DecString(QString hexStr, uint8_t dataType, bool isLittleEn
 
     switch (dataType) {
     case 0: /* uint8 */ isSigned = false; /* fall-through */
-    case 4: /* sint8 */
+    case 1: /* sint8 */
         if (bufLen != 1) str = "00";
         else str = Hex2bit8(buf, isSigned);
         break;
-    case 1: /* uint16 */ isSigned = false; /* fall-through */
-    case 5: /* sint16 */
+    case 2: /* uint16 */ isSigned = false; /* fall-through */
+    case 3: /* sint16 */
         if (bufLen != 2) str = "0000";
         else str = Hex2bit16(buf, isSigned);
         break;
     case 8: /* float  */ isFloat = true;   /* fall-through */
-    case 2: /* uint32 */ isSigned = false; /* fall-through */
-    case 6: /* sint32 */
+    case 4: /* uint32 */ isSigned = false; /* fall-through */
+    case 5: /* sint32 */
         if (bufLen != 4) str = "00000000";
         else str = Hex2bit32(buf, isSigned, isFloat);
         break;
     case 9: /* double */ isFloat = true;   /* fall-through */
-    case 3: /* uint64 */ isSigned = false; /* fall-through */
+    case 6: /* uint64 */ isSigned = false; /* fall-through */
     case 7: /* sint64 */
         if (bufLen != 8) str = "0000000000000000";
         else str = Hex2bit64(buf, isSigned, isFloat);
@@ -56,9 +56,9 @@ QString Hex2Dec::Hex2DecString(QString hexStr, uint8_t dataType, bool isLittleEn
 }
 
 /* **************************************************
- * @brief 字符串转换
+ * @brief Dec String convert to Hex
  * @para:
- *      [input]hexStr: dec string
+ *      [input]decStr: dec string
  *      [input]dataType: uint8 = 0, ..., uint64, int..., float, double
  *      [input]byteOrder: Little-Endian = 0, Big-Endian
  * @return:
@@ -109,7 +109,7 @@ QString Hex2Dec::Dec2HexString(QString decStr, uint8_t dataType, bool isLittleEn
 }
 
 /* **************************************************
- * @brief 字符串转数组
+ * @brief String convert to byte array
  * @para:
  *      [input]srcStr: string
  *      [input]buf: data buffer
@@ -199,7 +199,7 @@ QString Hex2Dec::Hex2bit32(uint8_t *buf, bool isSigned, bool isFloat)
 
     memcpy(&utmp32, buf, 4);
     if (isFloat)
-        str = QString::number(*(float *)&utmp32, 'f', 3);
+        str = QString::number((double)(*(float *)&utmp32), 'f', 3);
     else if (isSigned)
         str = QString::number((int32_t)utmp32);
     else
@@ -245,14 +245,14 @@ QString Hex2Dec::StrFix(QString srcStr, uint8_t dataType, bool isHex, bool isLit
     switch (dataType)
     {
     case 0: /* uint8  */ isSigned = false; /* fall-through */
-    case 4: /* sint8  */ dataLen = 1; break;
-    case 1: /* uint16 */ isSigned = false; /* fall-through */
-    case 5: /* sint16 */ dataLen = 2; break;
+    case 1: /* sint8  */ dataLen = 1; break;
+    case 2: /* uint16 */ isSigned = false; /* fall-through */
+    case 3: /* sint16 */ dataLen = 2; break;
     case 8: /* float  */ isFloat = true;   /* fall-through */
-    case 2: /* uint32 */ isSigned = false; /* fall-through */
-    case 6: /* sint32 */ dataLen = 4; break;
+    case 4: /* uint32 */ isSigned = false; /* fall-through */
+    case 5: /* sint32 */ dataLen = 4; break;
     case 9: /* double */ isFloat = true;   /* fall-through */
-    case 3: /* uint64 */ isSigned = false; /* fall-through */
+    case 6: /* uint64 */ isSigned = false; /* fall-through */
     case 7: /* sint64 */ dataLen = 8; break;
     default: break;
     }
@@ -317,7 +317,7 @@ QString Hex2Dec::StrFix(QString srcStr, uint8_t dataType, bool isHex, bool isLit
                 }
                 isFloat = true;
             }
-            else if ((ch < '0' || ch > '9') && (isHex ? (ch < 'A' || ch > 'Z') : true))
+            else if ((ch < '0' || ch > '9') && (isHex ? (ch < 'A' || ch > 'F') : true))
             {
                 fixStr.sprintf("0");
                 isNeg = false;

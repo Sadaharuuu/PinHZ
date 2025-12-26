@@ -13,6 +13,15 @@
 
 #define PINHZ_CACHE_LEN (81920)
 
+QString g_logColor[] =
+{
+    FONT_COLOR_BLUE,  /* LOG_LEVEL_DBG */
+    FONT_COLOR_BLACK, /* LOG_LEVEL_INF */
+    FONT_COLOR_PINK,  /* LOG_LEVEL_WAR */
+    FONT_COLOR_RED,   /* LOG_LEVEL_ERR */
+    FONT_COLOR_BLACK  /* LOG_LEVEL_COLORFUL */
+};
+
 uint32_t g_timerCnt_10ms = 0;
 
 // 拼好帧
@@ -30,7 +39,11 @@ uint32_t g_fillBuf[4096] = {0, };
 
 uint8_t g_dataLog_recvMode = 0;
 uint8_t g_dataLog_sendMode = 0;
-bool g_dataLog_logMode = 0;
+// 0: serial inside 1: net inside
+// 2: serial outside 3: net outside
+uint8_t g_dataLog_logMode = 0;
+
+bool g_isDebugMode = false;
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
@@ -44,51 +57,45 @@ Widget::Widget(QWidget *parent) :
     m_netUnit.netType = 0;
     m_netUnit.netState = 0;
 
-    // log显示
-    connect(this, &Widget::showLog, this, &Widget::on_showLog, Qt::DirectConnection);
-
-    // 初始化串口
-    // 限制波特率只能输入数字
-    ui->combo_serialBaud->setValidator(new QIntValidator(1, 20000000));
-    m_serialPort = new QSerialPort(this);
-
-    // 提取保存的配置
-    loadConf();
-
-    // 定时器
-    m_timer_Run = new QTimer(this);
-    connect(m_timer_Run, &QTimer::timeout, this, &Widget::on_timerOut_Run);
-    m_timer_Run->setInterval(10);
-    m_timer_Run->start();
-
-    // 拼好帧
-    ui->table_PinHZ->setColumnWidth(colDataType, 70); // 数据类型列设置列宽
-    ui->table_PinHZ->setColumnWidth(colDataHex, 130); // 数据Hex列设置列宽
-    QHeaderView *colHeader = ui->table_PinHZ->horizontalHeader();
-    colHeader->setSectionResizeMode(colDataType, QHeaderView::ResizeToContents); // 数据列保持最小列宽
-    colHeader->setSectionResizeMode(colComment, QHeaderView::Stretch);           // 备注列自动拉伸列宽
-    PinHZComboInit(0, 0);                                                        // 第一行的comboBox
-    ui->table_PinHZ->setCurrentCell(0, colDataHex);                              // 选中第一行
-    QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
-
+    // sub dialog
     m_fillItemDlg = new FormFillItem(this);
-    connect(m_fillItemDlg, &FormFillItem::fillConfDone, this, &Widget::on_fillConfDone, Qt::QueuedConnection);
+    connect(m_fillItemDlg, &FormFillItem::fillConfDone,
+            this, &Widget::on_fillConfDone, Qt::QueuedConnection);
 
-    m_dataLogDlgSerial = new FormDataLog(this, m_dataLogMode);
+    m_dataLogDlgSerial = new FormDataLog(this, m_dataLogMode[0]);
     m_dataLogDlgSerial->setWindowTitle("串口数据日志");
-    connect(this, &Widget::dataShowSerial, m_dataLogDlgSerial, &FormDataLog::on_dataShow, Qt::DirectConnection);
-    connect(this, &Widget::updateDataCntSerial, m_dataLogDlgSerial, &FormDataLog::on_updateDataCnt, Qt::QueuedConnection);
-    m_dataLogDlgNet = new FormDataLog(this, m_dataLogMode);
+    connect(this, &Widget::dataShowSerial, m_dataLogDlgSerial,
+            &FormDataLog::on_dataShow, Qt::DirectConnection);
+    connect(this, &Widget::updateDataCntSerial, m_dataLogDlgSerial,
+            &FormDataLog::on_updateDataCnt, Qt::QueuedConnection);
+    m_dataLogDlgNet = new FormDataLog(this, m_dataLogMode[1]);
     m_dataLogDlgNet->setWindowTitle("网口数据日志");
-    connect(this, &Widget::dataShowNet, m_dataLogDlgNet, &FormDataLog::on_dataShow, Qt::DirectConnection);
-    connect(this, &Widget::updateDataCntNet, m_dataLogDlgNet, &FormDataLog::on_updateDataCnt, Qt::QueuedConnection);
+    connect(this, &Widget::dataShowNet, m_dataLogDlgNet,
+            &FormDataLog::on_dataShow, Qt::DirectConnection);
+    connect(this, &Widget::updateDataCntNet, m_dataLogDlgNet,
+            &FormDataLog::on_updateDataCnt, Qt::QueuedConnection);
+
+    if (ui->combo_portMode->currentIndex() == 0)
+    {
+        ui->tabWidget->insertTab(1, m_dataLogDlgSerial, "串口数据日志");
+    }
+    else
+    {
+        ui->tabWidget->insertTab(1, m_dataLogDlgNet, "网口数据日志");
+    }
 
     m_crcConfDlg = new FormCRCConf(this);
-    connect(m_crcConfDlg, &FormCRCConf::CRCConfDone, this, &Widget::on_CRCConfDone, Qt::DirectConnection);
+    connect(m_crcConfDlg, &FormCRCConf::CRCConfDone,
+            this, &Widget::on_CRCConfDone, Qt::DirectConnection);
 
+    // log
+    connect(this, &Widget::showLog, this, &Widget::on_showLog, Qt::DirectConnection);
+
+    // serial port
+    m_serialPort = new QSerialPort(this);
     connect(m_serialPort, &QSerialPort::readyRead, this, &Widget::on_serialRecv, Qt::DirectConnection);
 
-    // netport
+    // net port
     m_udpSocket = new QUdpSocket(this);
     m_tcpClient = new QTcpSocket(this);
     m_tcpServer = new QTcpServer(this);
@@ -99,15 +106,38 @@ Widget::Widget(QWidget *parent) :
     connect(m_tcpClient, &QTcpSocket::disconnected, this, &Widget::on_netDisconnected);
     connect(m_tcpClient, &QTcpSocket::readyRead, this, &Widget::on_netReadyRead);
     connect(m_tcpClient, &QTcpSocket::stateChanged, this, &Widget::on_netStateChanged);
-    connect(m_tcpClient, \
-            static_cast<void (QTcpSocket::*)(QAbstractSocket::SocketError)>(&QTcpSocket::error), \
+    connect(m_tcpClient,
+            static_cast<void (QTcpSocket::*)(QAbstractSocket::SocketError)>(&QTcpSocket::error),
             this, &Widget::on_netSocketErr);
 
     connect(m_tcpServer, &QTcpServer::newConnection, this, &Widget::on_netNewConnection);
+
+    // load stored config
+    loadConf();
+
+    // Timer
+    m_timer_Run = new QTimer(this);
+    connect(m_timer_Run, &QTimer::timeout, this, &Widget::on_timerOut_Run);
+    m_timer_Run->setInterval(10);
+    m_timer_Run->start();
+
+    ui->table_PinHZ->setColumnWidth(colDataType, 70);
+    ui->table_PinHZ->setColumnWidth(colDataHex, 130);
+    QHeaderView *colHeader = ui->table_PinHZ->horizontalHeader();
+    colHeader->setSectionResizeMode(colDataType, QHeaderView::ResizeToContents);
+    colHeader->setSectionResizeMode(colComment, QHeaderView::Stretch);
+    PinHZComboInit(0, 0);
+    ui->table_PinHZ->setCurrentCell(0, colDataHex);
+    QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
+
+    // install event filter, for click app icon 5 times to login debug mode
+    ui->label_appIcon->installEventFilter(this);
 }
 
 Widget::~Widget()
 {
+    m_dataLogDlgSerial->close();
+    m_dataLogDlgNet->close();
     saveConf();
 
     if (m_udpSocket->state() == QAbstractSocket::BoundState)
@@ -157,7 +187,7 @@ uint8_t sumCheck(uint8_t *buf, uint32_t len)
 }
 
 /* **************************************************
- * @brief ms定时器槽函数，主要用于检测程序运行时间
+ * @brief 10ms Timer Slot
  * **************************************************/
 void Widget::on_timerOut_Run()
 {
@@ -193,106 +223,132 @@ void Widget::saveConf()
     settings.setValue("Net/NetType", ui->combo_netType->currentIndex());
     settings.setValue("Net/AddrLocal_UDP", m_netUnit.addrLocal[NetType_UDP]);
     settings.setValue("Net/PortLocal_UDP", m_netUnit.portLocal[NetType_UDP]);
-    settings.setValue("Net/AddrRemote_UDP", m_netUnit.addrRemote[NetType_UDP]);
-    settings.setValue("Net/PortRemote_UDP", m_netUnit.portRemote[NetType_UDP]);
+    settings.setValue("Net/AddrTarget_UDP", m_netUnit.addrTarget[NetType_UDP]);
+    settings.setValue("Net/PortTarget_UDP", m_netUnit.portTarget[NetType_UDP]);
     settings.setValue("Net/AddrLocal_TCPC", m_netUnit.addrLocal[NetType_TCPC]);
     settings.setValue("Net/PortLocal_TCPC", m_netUnit.portLocal[NetType_TCPC]);
-    settings.setValue("Net/AddrRemote_TCPC", m_netUnit.addrRemote[NetType_TCPC]);
-    settings.setValue("Net/PortRemote_TCPC", m_netUnit.portRemote[NetType_TCPC]);
+    settings.setValue("Net/AddrTarget_TCPC", m_netUnit.addrTarget[NetType_TCPC]);
+    settings.setValue("Net/PortTarget_TCPC", m_netUnit.portTarget[NetType_TCPC]);
     settings.setValue("Net/AddrLocal_TCPS", m_netUnit.addrLocal[NetType_TCPS]);
     settings.setValue("Net/PortLocal_TCPS", m_netUnit.portLocal[NetType_TCPS]);
 
+    settings.setValue("Net/isPortLocalAuto_UDP",
+                      m_netUnit.isPortLocalAuto[NetType_UDP] ? 1 : 0);
+    settings.setValue("Net/isPortLocalAuto_TCPC",
+                      m_netUnit.isPortLocalAuto[NetType_TCPC] ? 1 : 0);
+
     settings.setValue("PortMode", ui->combo_portMode->currentIndex());
 
-    m_dataLogMode = 0;
-    m_dataLogMode |= m_dataLogDlgSerial->m_recvMode;
-    m_dataLogMode |= m_dataLogDlgSerial->m_sendMode << 2;
-    m_dataLogMode |= m_dataLogDlgSerial->m_isLog << 4;
-    settings.setValue("DataLog/ModeCtrl", m_dataLogMode);
+    m_dataLogMode[0] = 0;
+    m_dataLogMode[0] |= m_dataLogDlgSerial->m_recvMode;
+    m_dataLogMode[0] |= m_dataLogDlgSerial->m_sendMode << 2;
+    m_dataLogMode[0] |= m_dataLogDlgSerial->m_isLog << 4;
+    settings.setValue("DataLog/ModeCtrl_Serial", m_dataLogMode[0]);
+
+    m_dataLogMode[1] = 0;
+    m_dataLogMode[1] |= m_dataLogDlgNet->m_recvMode;
+    m_dataLogMode[1] |= m_dataLogDlgNet->m_sendMode << 2;
+    m_dataLogMode[1] |= m_dataLogDlgNet->m_isLog << 4;
+    settings.setValue("DataLog/ModeCtrl_Net", m_dataLogMode[1]);
 }
 
 void Widget::loadConf()
 {
     QSettings settings(CONF_PATH, QSettings::IniFormat);
     QString str = "";
-    int32_t index = 0;
+    int32_t utmp32 = 0;
+    bool isUint = false;
 
-    str = settings.value("Serial/COM", "Unknown").toString();
-
+    // serial port info
     // refresh serial port and select
     serialRefresh();
-    index = ui->combo_serialPort->findText(str);
-    if (index >= 0)
-        ui->combo_serialPort->setCurrentIndex(index);
+    str = settings.value("Serial/COM", "COM1").toString();
+    utmp32 = ui->combo_serialPort->findText(str);
+    if (utmp32 >= 0)
+        ui->combo_serialPort->setCurrentIndex(utmp32);
 
-    index = settings.value("Serial/Baud", 5).toInt();
-    ui->combo_serialBaud->setCurrentIndex(index);
-    index = settings.value("Serial/DataBit", 0).toInt();
-    ui->combo_serialDataBit->setCurrentIndex(index);
-    index = settings.value("Serial/StopBit", 0).toInt();
-    ui->combo_serialStopBit->setCurrentIndex(index);
-    index = settings.value("Serial/ParityBit", 0).toInt();
-    ui->combo_serialParityBit->setCurrentIndex(index);
+    ui->combo_serialBaud->setValidator(new QIntValidator(1, 20000000));
+    utmp32 = settings.value("Serial/Baud", 5).toUInt();
+    ui->combo_serialBaud->setCurrentIndex(utmp32);
+    utmp32 = settings.value("Serial/DataBit", 0).toUInt();
+    ui->combo_serialDataBit->setCurrentIndex(utmp32);
+    utmp32 = settings.value("Serial/StopBit", 0).toUInt();
+    ui->combo_serialStopBit->setCurrentIndex(utmp32);
+    utmp32 = settings.value("Serial/ParityBit", 0).toUInt();
+    ui->combo_serialParityBit->setCurrentIndex(utmp32);
 
-    index = settings.value("Net/NetType", 0).toInt();
-    if (index == 0)
-        on_combo_netType_currentIndexChanged(index);
+    // net port info
+    utmp32 = settings.value("Net/NetType", 0).toInt();
+    if (utmp32 == 0)
+        on_combo_netType_currentIndexChanged(utmp32);
     else
-        ui->combo_netType->setCurrentIndex(index);
-    m_netUnit.netType = index;
+        ui->combo_netType->setCurrentIndex(utmp32);
+    m_netUnit.netType = utmp32;
 
-    str = getLocalIP();
-    m_netUnit.addrLocal[NetType_UDP] = settings.value("Net/AddrLocal_UDP", str).toString();
-    m_netUnit.portLocal[NetType_UDP] = settings.value("Net/PortLocal_UDP", 0).toString();
-    m_netUnit.addrRemote[NetType_UDP] = settings.value("Net/AddrRemote_UDP", str).toString();
-    m_netUnit.portRemote[NetType_UDP] = settings.value("Net/PortRemote_UDP", 0).toString();
-    m_netUnit.addrLocal[NetType_TCPC] = settings.value("Net/AddrLocal_TCPC", str).toString();
-    m_netUnit.portLocal[NetType_TCPC] = settings.value("Net/PortLocal_TCPC", 0).toString();
-    m_netUnit.addrRemote[NetType_TCPC] = settings.value("Net/AddrRemote_TCPC", str).toString();
-    m_netUnit.portRemote[NetType_TCPC] = settings.value("Net/PortRemote_TCPC", 0).toString();
-    m_netUnit.addrLocal[NetType_TCPS] = settings.value("Net/AddrLocal_TCPS", str).toString();
-    m_netUnit.portLocal[NetType_TCPS] = settings.value("Net/PortLocal_TCPS", 0).toString();
+    QString localIP = getLocalIP();
 
-    // refresh ip address
-    str = QHostInfo::localHostName();
-    QHostInfo hostInfo = QHostInfo::fromName(str);
-    QList<QHostAddress> addrList = hostInfo.addresses();
-    foreach (QHostAddress hostAddr, addrList)
-    {
-        if (QAbstractSocket::IPv4Protocol == hostAddr.protocol())
-        {
-            ui->combo_netAddrLocal->addItem(hostAddr.toString());
-            ui->combo_netAddrRemote->addItem(hostAddr.toString());
-        }
-    }
-    ui->combo_netAddrLocal->addItem("127.0.0.1");
-    ui->combo_netAddrRemote->addItem("127.0.0.1");
-    ui->combo_netAddrLocal->addItem("0.0.0.0");
-    ui->combo_netAddrRemote->addItem("0.0.0.0");
+    str = settings.value("Net/AddrLocal_UDP", localIP).toString();
+    m_netUnit.addrLocal[NetType_UDP] = str;
+    utmp32 = settings.value("Net/PortLocal_UDP", 0).toUInt();
+    m_netUnit.portLocal[NetType_UDP] = QString::number(utmp32);
+    str = settings.value("Net/AddrTarget_UDP", localIP).toString();
+    m_netUnit.addrTarget[NetType_UDP] = str;
+    utmp32 = settings.value("Net/PortTarget_UDP", 0).toUInt();
+    m_netUnit.portTarget[NetType_UDP] = QString::number(utmp32);
+    str = settings.value("Net/AddrLocal_TCPC", localIP).toString();
+    m_netUnit.addrLocal[NetType_TCPC] = str;
+    utmp32 = settings.value("Net/PortLocal_TCPC", 0).toUInt();
+    m_netUnit.portLocal[NetType_TCPC] = QString::number(utmp32);
+    str = settings.value("Net/AddrTarget_TCPC", localIP).toString();
+    m_netUnit.addrTarget[NetType_TCPC] = str;
+    utmp32 = settings.value("Net/PortTarget_TCPC", 0).toUInt();
+    m_netUnit.portTarget[NetType_TCPC] = QString::number(utmp32);
+    str = settings.value("Net/AddrLocal_TCPS", localIP).toString();
+    m_netUnit.addrLocal[NetType_TCPS] = str;
+    utmp32 = settings.value("Net/PortLocal_TCPS", 0).toUInt();
+    m_netUnit.portLocal[NetType_TCPS] = QString::number(utmp32);
 
-    // query for the current address in the combo and select
-    index = ui->combo_netAddrLocal->findText(m_netUnit.addrLocal[m_netUnit.netType]);
-    if (index >= 0)
-        ui->combo_netAddrLocal->setCurrentIndex(index);
+    utmp32 = settings.value("Net/isPortLocalAuto_UDP", 0).toUInt();
+    m_netUnit.isPortLocalAuto[NetType_UDP] = utmp32 == 1 ? true : false;
+    utmp32 = settings.value("Net/isPortLocalAuto_TCPC", 0).toUInt(&isUint);
+    m_netUnit.isPortLocalAuto[NetType_TCPC] = utmp32 == 1 ? true : false;
+
+    // refresh address
+    netRefresh();
+
+    // query is the stored address in the combo and select
+    utmp32 = ui->combo_netAddrLocal->findText(m_netUnit.addrLocal[m_netUnit.netType]);
+    if (utmp32 >= 0)
+        ui->combo_netAddrLocal->setCurrentIndex(utmp32);
     if (m_netUnit.netType < 2)
     {
-        index = ui->combo_netAddrRemote->findText(m_netUnit.addrRemote[m_netUnit.netType]);
-        if (index >= 0)
-            ui->combo_netAddrRemote->setCurrentIndex(index);
+        utmp32 = ui->combo_netAddrTarget->findText(m_netUnit.addrTarget[m_netUnit.netType]);
+        if (utmp32 >= 0)
+            ui->combo_netAddrTarget->setCurrentIndex(utmp32);
     }
 
     // set the stored port
     ui->lineEdit_netPortLocal->setText(m_netUnit.portLocal[m_netUnit.netType]);
     if (m_netUnit.netType < 2)
-        ui->lineEdit_netPortRemote->setText(m_netUnit.portRemote[m_netUnit.netType]);
+    {
+        ui->lineEdit_netPortTarget->setText(m_netUnit.portTarget[m_netUnit.netType]);
+        if (m_netUnit.isPortLocalAuto[m_netUnit.netType])
+        {
+            ui->check_netPortLocal->setChecked(true);
+            ui->lineEdit_netPortLocal->setText("Auto");
+        }
+    }
 
-    index = settings.value("PortMode", 0).toInt();
-    if (index == 0)
-        on_combo_portMode_currentIndexChanged(index);
+    utmp32 = settings.value("PortMode", 0).toInt();
+    if (utmp32 == 0)
+        on_combo_portMode_currentIndexChanged(0); // default 0, so must call slot manual
     else
-        ui->combo_portMode->setCurrentIndex(index);
+        ui->combo_portMode->setCurrentIndex(1);
 
-    m_dataLogMode = settings.value("DataLog/ModeCtrl", 0x1A).toInt();
+    m_dataLogMode[0] = settings.value("DataLog/ModeCtrl_Serial", 0x1A).toInt();
+    m_dataLogMode[1] = settings.value("DataLog/ModeCtrl_Net", 0x1A).toInt();
+    m_dataLogDlgSerial->setModeCtrl(m_dataLogMode[0]);
+    m_dataLogDlgNet->setModeCtrl(m_dataLogMode[0]);
 }
 
 int32_t Widget::PinHZDeal(QString str, uint8_t *buf)
@@ -300,6 +356,7 @@ int32_t Widget::PinHZDeal(QString str, uint8_t *buf)
     QStringList strList;
     int32_t strNum = 0;
     int32_t dealLen = 0;
+    uint8_t utmp8 = 0;
     bool isHex = false;
 
     strList = str.split(" ");
@@ -310,7 +367,12 @@ int32_t Widget::PinHZDeal(QString str, uint8_t *buf)
         str = strList[i];
         for (int32_t j = 0; j < str.length(); j += 2)
         {
-            buf[dealLen++] = str.mid(j, 2).toUInt(&isHex, 16);
+            utmp8 = str.mid(j, 2).toUInt(&isHex, 16);
+            if (!isHex)
+            {
+                emit showLog(LogLevel_ERR, "异常字符:" + str.mid(j, 2));
+            }
+            buf[dealLen++] = utmp8;
             if (dealLen == PINHZ_CACHE_LEN - 1)
             {
                 emit showLog(LogLevel_WAR, "缓冲区溢出，丢弃溢出部分");
@@ -327,19 +389,19 @@ void Widget::PinHZComboInit(int32_t row, uint8_t dataType)
     QComboBox *comboBox = new QComboBox();
 
     comboBox->addItem("uint8");
-    comboBox->addItem("uint16");
-    comboBox->addItem("uint32");
-    comboBox->addItem("uint64");
     comboBox->addItem("int8");
+    comboBox->addItem("uint16");
     comboBox->addItem("int16");
+    comboBox->addItem("uint32");
     comboBox->addItem("int32");
+    comboBox->addItem("uint64");
     comboBox->addItem("int64");
     comboBox->addItem("float");
     comboBox->addItem("double");
     comboBox->setCurrentIndex(dataType);
-    connect(comboBox, \
-            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), \
-            this, \
+    connect(comboBox,
+            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            this,
             &Widget::on_combo_PinHZ_dataTypeChanged);
     ui->table_PinHZ->setCellWidget(row, colDataType, comboBox);
 }
@@ -358,14 +420,14 @@ int32_t Widget::getRowsBytes(int32_t rowStart, int32_t rowEnd)
         switch (comboBox->currentIndex())
         {
         case 0: /* uint8 */ /* fall-through */
-        case 4: /* sint8 */ dataLen = 1; break;
-        case 1: /* uint16 */ /* fall-through */
-        case 5: /* sint16 */ dataLen = 2; break;
-        case 8: /* float  */ /* fall-through */
-        case 2: /* uint32 */ /* fall-through */
-        case 6: /* sint32 */ dataLen = 4; break;
+        case 1: /* sint8 */ dataLen = 1; break;
+        case 2: /* uint16 */ /* fall-through */
+        case 3: /* sint16 */ dataLen = 2; break;
+        case 8: /* float */ /* fall-through */
+        case 4: /* uint32 */ /* fall-through */
+        case 5: /* sint32 */ dataLen = 4; break;
         case 9: /* double */ /* fall-through */
-        case 3: /* uint64 */ /* fall-through */
+        case 6: /* uint64 */ /* fall-through */
         case 7: /* sint64 */ dataLen = 8; break;
         default: break;
         }
@@ -441,26 +503,31 @@ void Widget::createItemsARow(int32_t row, QString rowHead, uint8_t dataType, QSt
 void Widget::on_showLog(e_logLevel level, QString string)
 {
     QString Time = QDateTime().currentDateTime().toString("[yyyy-MM-dd hh:mm:ss]");
+    QString log = "";
+    QString fontColor = g_logColor[level];
+
+    if (level == LogLevel_COlORFUL)
+    {
+        fontColor = string.left(fontColor.length());
+        // string.remove(0, fontColor.length()); // unnecessary
+        level = LogLevel_INF;
+    }
 
     switch (level)
     {
-    case LogLevel_DBG:
-        ui->txtBs_log->append(FONT_COLOR_BLUE + Time + "[DBG]<br>" + string);
-        break;
-    case LogLevel_INF:
-        ui->txtBs_log->append(FONT_COLOR_BLACK + Time + "<br>" + string);
-        break;
-    case LogLevel_WAR:
-        ui->txtBs_log->append(FONT_COLOR_DARK_ORANGE + Time + "[WAR]<br>" + string);
-        break;
-    case LogLevel_ERR:
-        ui->txtBs_log->append(FONT_COLOR_RED + Time + "[ERR]<br>" + string);
-        break;
-    default:
-        break;
+    case LogLevel_DBG: log = Time + "[DBG]<br>" + string; break;
+    case LogLevel_INF: log = Time + "<br>" + string; break;
+    case LogLevel_WAR: log = Time + "[WAR]<br>" + string; break;
+    case LogLevel_ERR: log = Time + "[ERR]<br>" + string; break;
+    default: break;
     }
-    QScrollBar *scrollBar = ui->txtBs_log->verticalScrollBar();
-    scrollBar->setSliderPosition(scrollBar->maximum());
+
+    if (!(level == LogLevel_DBG && !g_isDebugMode))
+    {
+        ui->txtBs_log->append(fontColor + log);
+        QScrollBar *scrollBar = ui->txtBs_log->verticalScrollBar();
+        scrollBar->setSliderPosition(scrollBar->maximum());
+    }
 }
 
 void Widget::serialSend(uint8_t *buf, int32_t len)
@@ -555,26 +622,26 @@ void Widget::on_fillConfDone()
 
             item = ui->table_PinHZ->item(row, colDataHex);
             if (m_fillItemDlg->m_fillStatus == 1) // 顺序填充
-                str.asprintf("%X", g_fillBuf[bufIndex++]);
+                str = QString::asprintf("%X", g_fillBuf[bufIndex++]);
             else // 重复填充
             {
                 switch (dataType)
                 {
-                case 0: /* uint8  */ /* fall-through */
-                case 4: /* sint8  */ dataLen = 1; break;
-                case 1: /* uint16 */ /* fall-through */
-                case 5: /* sint16 */ dataLen = 2; break;
-                case 8: /* float  */ /* fall-through */
-                case 2: /* uint32 */ /* fall-through */
-                case 6: /* sint32 */ dataLen = 4; break;
-                case 9: /* double */ /* fall-through */
-                case 3: /* uint64 */ /* fall-through */
-                case 7: /* sint64 */ dataLen = 8; break;
+                case 0: /* uint8 */ /* fall-through */
+                case 1: /* sint8 */ dataLen = 1; break;
+                case 2: /* uint16 */ /* fall-through */
+                case 3: /* sint16 */ dataLen = 2; break;
+                case 4: /* uint32 */ /* fall-through */
+                case 5: /* sint32 */ /* fall-through */
+                case 8: /* float  */ dataLen = 4; break;
+                case 6: /* uint64 */ /* fall-through */
+                case 7: /* sint64 */ /* fall-through */
+                case 9: /* double */ dataLen = 8; break;
                 default: break;
                 }
                 memcpy(&value, pFillBuf + bufIndex, dataLen);
                 bufIndex += dataLen;
-                str.asprintf("%X", value);
+                str = QString::asprintf("%X", value);
             }
 
             str = m_hex2dec.StrFix(str, dataType, true, g_isLittleEndian);
@@ -625,7 +692,7 @@ void Widget::on_button_serialSwitch_clicked()
 
     if (curStr == "打开串口")
     {
-        int index;
+        int32_t index;
 
         QSerialPortInfo portInfo(ui->combo_serialPort->currentText());
         m_serialPort->setPort(portInfo);
@@ -733,7 +800,7 @@ void Widget::on_button_addHead_clicked()
     else
         curRow = zoneEnd + 1;
 
-    ui->table_PinHZ->insertRow(curRow);                      // 插入一行，但不会自动为单元格创建item
+    ui->table_PinHZ->insertRow(curRow);                    // 插入一行，但不会自动为单元格创建item
     createItemsARow(curRow, "Head", 0, "00", "0", "Head"); // 为某一行创建items
     g_rowCntHead++;
 }
@@ -753,7 +820,7 @@ void Widget::on_button_addItem_clicked()
         else
             curRow = zoneEnd + 1;
 
-        ui->table_PinHZ->insertRow(curRow);                  // 插入一行，但不会自动为单元格创建item
+        ui->table_PinHZ->insertRow(curRow);                // 插入一行，但不会自动为单元格创建item
         createItemsARow(curRow, "Data", 0, "00", "0", ""); // 为某一行创建items
         g_rowCntData++;
         zoneEnd = ZONE_END_DATA;
@@ -894,12 +961,12 @@ void Widget::on_button_copyCurRow_clicked()
         colStrList << item->text();
 
         if (colStrList[1] == "uint8") curDataType = 0;
-        else if (colStrList[1] == "uint16") curDataType = 1;
-        else if (colStrList[1] == "uint32") curDataType = 2;
-        else if (colStrList[1] == "uint64") curDataType = 3;
-        else if (colStrList[1] == "int8") curDataType = 4;
-        else if (colStrList[1] == "int16") curDataType = 5;
-        else if (colStrList[1] == "int32") curDataType = 6;
+        else if (colStrList[1] == "int8") curDataType = 1;
+        else if (colStrList[1] == "uint16") curDataType = 2;
+        else if (colStrList[1] == "int16") curDataType = 3;
+        else if (colStrList[1] == "uint32") curDataType = 4;
+        else if (colStrList[1] == "int32") curDataType = 5;
+        else if (colStrList[1] == "uint64") curDataType = 6;
         else if (colStrList[1] == "int64") curDataType = 7;
         else if (colStrList[1] == "float") curDataType = 8;
         else if (colStrList[1] == "double") curDataType = 9;
@@ -1021,13 +1088,12 @@ void Widget::on_button_PinHZ_clicked()
     QTableWidgetItem *cellItem = nullptr;
 
     ui->plain_PinHZ->clear(); // 文本编辑器清空
-
     for (int32_t row = 0; row < ui->table_PinHZ->rowCount(); row++) // 逐行处理
     {
         if (g_rowCntCheck == 1 && m_checkType == 0 && row == ZONE_END_DATA + 1)
             continue; // 校验位为None不参与拼好帧
         cellItem = ui->table_PinHZ->item(row, colDataHex); // 获取单元格的item
-        str = cellItem->text();                              // 字符串连接
+        str = cellItem->text();                            // 字符串连接
         if (!m_isFieldPinHZ)
         {
             // 按字节拼好帧
@@ -1108,13 +1174,14 @@ void Widget::on_button_PinHZLoad_clicked()
 {
     QString filePath = "";
 
-    filePath = QFileDialog::getOpenFileName(this, tr("请选择或输入你要打开的文件名"), \
+    filePath = QFileDialog::getOpenFileName(this, tr("请选择或输入你要打开的文件名"),
                                             "", tr("逗号分隔文件(*.csv)"));
     if (filePath.isEmpty())
     {
         emit showLog(LogLevel_WAR, "未正确选择文件, 放弃处理");
         return;
     }
+    // need real direct
     on_showLog(LogLevel_INF, "开始读取模板<br>" FONT_COLOR_DARK_ORANGE + filePath + FONT_COLOR_BLACK "<br>请稍后...");
     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     QFile file(filePath);
@@ -1201,12 +1268,12 @@ void Widget::on_button_PinHZLoad_clicked()
             }
 
             if (colStrList[1] == "uint8") curDataType = 0;
-            else if (colStrList[1] == "uint16") curDataType = 1;
-            else if (colStrList[1] == "uint32") curDataType = 2;
-            else if (colStrList[1] == "uint64") curDataType = 3;
-            else if (colStrList[1] == "int8") curDataType = 4;
-            else if (colStrList[1] == "int16") curDataType = 5;
-            else if (colStrList[1] == "int32") curDataType = 6;
+            else if (colStrList[1] == "int8") curDataType = 1;
+            else if (colStrList[1] == "uint16") curDataType = 2;
+            else if (colStrList[1] == "int16") curDataType = 3;
+            else if (colStrList[1] == "uint32") curDataType = 4;
+            else if (colStrList[1] == "int32") curDataType = 5;
+            else if (colStrList[1] == "uint64") curDataType = 6;
             else if (colStrList[1] == "int64") curDataType = 7;
             else if (colStrList[1] == "float") curDataType = 8;
             else if (colStrList[1] == "double") curDataType = 9;
@@ -1268,16 +1335,16 @@ void Widget::on_button_PinHZReverse_clicked()
 
         switch (dataType)
         {
-        case 0: /* uint8  */ /* fall-through */
-        case 4: /* sint8  */ dataLen = 1; break;
-        case 1: /* uint16 */ /* fall-through */
-        case 5: /* sint16 */ dataLen = 2; break;
-        case 8: /* float  */ /* fall-through */
-        case 2: /* uint32 */ /* fall-through */
-        case 6: /* sint32 */ dataLen = 4; break;
-        case 9: /* double */ /* fall-through */
-        case 3: /* uint64 */ /* fall-through */
-        case 7: /* sint64 */ dataLen = 8; break;
+        case 0: /* uint8 */ /* fall-through */
+        case 1: /* sint8 */ dataLen = 1; break;
+        case 2: /* uint16 */ /* fall-through */
+        case 3: /* sint16 */ dataLen = 2; break;
+        case 4: /* uint32 */ /* fall-through */
+        case 5: /* sint32 */ /* fall-through */
+        case 8: /* float  */ dataLen = 4; break;
+        case 6: /* uint64 */ /* fall-through */
+        case 7: /* sint64 */ /* fall-through */
+        case 9: /* double */ dataLen = 8; break;
         default: break;
         }
         if (row == ZONE_END_DATA + 1)
@@ -1307,7 +1374,6 @@ void Widget::on_button_PinHZReverse_clicked()
     ui->table_PinHZ->blockSignals(false);
     if (bufIndex != bufLen)
     {
-        // 模板不匹配
         str = QString::asprintf("模板不匹配, 模板:%dBytes, 数据:%dBytes", bufIndex, bufLen);
         emit showLog(LogLevel_WAR, str);
         return;
@@ -1316,10 +1382,54 @@ void Widget::on_button_PinHZReverse_clicked()
 
 void Widget::on_button_dataLog_clicked()
 {
-    if (ui->combo_portMode->currentIndex() == 0)
-        m_dataLogDlgSerial->show();
+    if (g_dataLog_logMode < 2)
+    {
+        // inside
+        if (ui->tabWidget->currentIndex() == 1)
+            ui->tabWidget->setCurrentIndex(0);
+        ui->tabWidget->removeTab(1);
+        QPoint mainPos = this->pos();
+        if (g_dataLog_logMode == 0)
+        {
+            // turn to serial outside
+            m_dataLogDlgNet->setParent(this);
+            m_dataLogDlgSerial->setWindowFlags(Qt::Window | m_dataLogDlgSerial->windowFlags());
+            m_dataLogDlgSerial->move(mainPos + QPoint(210, 70));
+            m_dataLogDlgSerial->show();
+            g_dataLog_logMode = 2;
+        }
+        else
+        {
+            // turn to net outside
+            m_dataLogDlgNet->setParent(this);
+            m_dataLogDlgNet->setWindowFlags(Qt::Window | m_dataLogDlgNet->windowFlags());
+            m_dataLogDlgNet->move(mainPos + QPoint(210, 70));
+            m_dataLogDlgNet->show();
+            g_dataLog_logMode = 3;
+        }
+        ui->button_dataLog->setText("数据日志->内嵌");
+    }
     else
-        m_dataLogDlgNet->show();
+    {
+        // outside
+        if (g_dataLog_logMode == 2)
+        {
+            // turn to serial inside
+            m_dataLogDlgSerial->setWindowFlags(Qt::Widget);
+            m_dataLogDlgSerial->setParent(ui->tabWidget);
+            ui->tabWidget->insertTab(1, m_dataLogDlgSerial, "串口数据日志");
+            g_dataLog_logMode = 0;
+        }
+        else
+        {
+            // turn to net inside
+            m_dataLogDlgNet->setWindowFlags(Qt::Widget);
+            m_dataLogDlgNet->setParent(ui->tabWidget);
+            ui->tabWidget->insertTab(1, m_dataLogDlgNet, "网口数据日志");
+            g_dataLog_logMode = 1;
+        }
+        ui->button_dataLog->setText("数据日志->外挂");
+    }
 }
 
 void Widget::on_combo_PinHZ_dataTypeChanged(int index)
@@ -1460,14 +1570,14 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
     ui->table_PinHZ->blockSignals(true);
 
     // 校验行的Hex item
-    str = m_hex2dec.Dec2HexString(checkStr, \
-                                  dataType, \
+    str = m_hex2dec.Dec2HexString(checkStr,
+                                  dataType,
                                   g_isLittleEndian);
     item = ui->table_PinHZ->item(dataZoneEnd + 1, colDataHex);
     item->setText(str);
     // 校验行的Dec item
-    str = m_hex2dec.Hex2DecString(str, \
-                                  dataType, \
+    str = m_hex2dec.Hex2DecString(str,
+                                  dataType,
                                   g_isLittleEndian);
     item = ui->table_PinHZ->item(dataZoneEnd + 1, colDataDec);
     item->setText(str);
@@ -1501,13 +1611,13 @@ void Widget::on_combo_hexOrder_currentIndexChanged(int index)
         switch (byteStrLen)
         {
         case 0: /* uint8  */ /* fall-through */
-        case 4: /* int8   */ byteStrLen = 1 * 2; break;
-        case 1: /* uint16 */ /* fall-through */
-        case 5: /* int16  */ byteStrLen = 2 * 2; break;
-        case 2: /* uint32 */ /* fall-through */
-        case 6: /* int32  */ /* fall-through */
+        case 1: /* int8   */ byteStrLen = 1 * 2; break;
+        case 2: /* uint16 */ /* fall-through */
+        case 3: /* int16  */ byteStrLen = 2 * 2; break;
+        case 4: /* uint32 */ /* fall-through */
+        case 5: /* int32  */ /* fall-through */
         case 8: /* float  */ byteStrLen = 4 * 2; break;
-        case 3: /* uint64 */ /* fall-through */
+        case 6: /* uint64 */ /* fall-through */
         case 7: /* int64  */ /* fall-through */
         case 9: /* double */ byteStrLen = 8 * 2; break;
         default: break;
@@ -1544,24 +1654,32 @@ void Widget::on_table_PinHZ_itemChanged(QTableWidgetItem *item)
     {
     case colDataHex:
     {
-        // 大部分人输入习惯是大端模式，类似输入1根据数据类型默认为01或0001等，字符串默认大端
+        // 大部分人输入和阅读习惯是大端模式，
+        // 比如输入0001(u16)等字符串的时候，默认就是大端的1，而不转为小端的0100
+        // 目前有个问题是，由于是默认先处理成大端顺序了的，所以可能会出现以下情况
+        // 比如用户在小端和uint16的情况下，输入EB90，得到了90EB，然后发现实际上就想要EB90，
+        // 所以又输入了90EB，同时使用的是大写字母输入，那这个item就和输入前一模一样，也就无法触发当前槽函数
+        // 所以先修改成别的内容，再输入90EB，或者用小写输入90eb，都可以进行正常流程
+        // 原生tabwidget不支持editdone，目前最合理的修改的逻辑是重写tableWidget类，手动控制事件
         fixStr = m_hex2dec.StrFix(str, comboBox->currentIndex(), true, false);
         fixStr = m_hex2dec.StrFix(fixStr, comboBox->currentIndex(), true, g_isLittleEndian);
         item->setText(fixStr);
-        str = m_hex2dec.Hex2DecString(fixStr, \
-                                      comboBox->currentIndex(), \
-                                      g_isLittleEndian);
+        str = m_hex2dec.Hex2DecString(fixStr,
+                                        comboBox->currentIndex(),
+                                        g_isLittleEndian);
         item = ui->table_PinHZ->item(row, colDataDec);
         item->setText(str);
         break;
     }
     case colDataDec:
     {
-        fixStr = m_hex2dec.StrFix(str, comboBox->currentIndex(), false, g_isLittleEndian);
+        fixStr = m_hex2dec.StrFix(str,
+                                    comboBox->currentIndex(), false,
+                                    g_isLittleEndian);
         item->setText(fixStr);
-        str = m_hex2dec.Dec2HexString(fixStr, \
-                                      comboBox->currentIndex(), \
-                                      g_isLittleEndian);
+        str = m_hex2dec.Dec2HexString(fixStr,
+                                        comboBox->currentIndex(),
+                                        g_isLittleEndian);
         item = ui->table_PinHZ->item(row, colDataHex);
         item->setText(str);
     }
@@ -1618,6 +1736,54 @@ void Widget::on_combo_portMode_currentIndexChanged(int index)
         ui->groupBox_net->show();
         ui->button_PinHZSend->setText("网口发送");
     }
+
+    if (g_dataLog_logMode < 2)
+    {
+        // inside
+        int32_t currIndex = ui->tabWidget->currentIndex();
+        ui->tabWidget->removeTab(1);
+        if (index == 0)
+        {
+            // turn to serial inside
+            m_dataLogDlgSerial->setWindowFlags(Qt::Widget);
+            ui->tabWidget->insertTab(1, m_dataLogDlgSerial, "串口数据日志");
+            g_dataLog_logMode = 0;
+        }
+        else
+        {
+            // turn to net inside
+            m_dataLogDlgNet->setWindowFlags(Qt::Widget);
+            ui->tabWidget->insertTab(1, m_dataLogDlgNet, "网口数据日志");
+            g_dataLog_logMode = 1;
+        }
+        ui->tabWidget->setCurrentIndex(currIndex);
+    }
+    else
+    {
+        // outside
+        if (index == 0)
+        {
+            // turn to serial outside
+            m_dataLogDlgNet->close();
+            m_dataLogDlgNet->setParent(this);
+            m_dataLogDlgSerial->setWindowFlags(Qt::Window | m_dataLogDlgSerial->windowFlags());
+            QPoint mainPos = this->pos();
+            m_dataLogDlgSerial->move(mainPos + QPoint(210, 70));
+            m_dataLogDlgSerial->show();
+            g_dataLog_logMode = 2;
+        }
+        else
+        {
+            // turn to net outside
+            m_dataLogDlgSerial->close();
+            m_dataLogDlgNet->setParent(this);
+            m_dataLogDlgNet->setWindowFlags(Qt::Window | m_dataLogDlgNet->windowFlags());
+            QPoint mainPos = this->pos();
+            m_dataLogDlgNet->move(mainPos + QPoint(210, 70));
+            m_dataLogDlgNet->show();
+            g_dataLog_logMode = 3;
+        }
+    }
 }
 
 QString Widget::getLocalIP()
@@ -1645,31 +1811,30 @@ void Widget::on_button_netSwitch_clicked()
 {
     m_netUnit.netType = ui->combo_netType->currentIndex();
 
-    bool isUint = false;
-    QString addrStr = ui->combo_netAddrLocal->currentText();
-    QString portStr = ui->lineEdit_netPortLocal->text();
-    if (portStr == "Auto")
-        portStr = "0";
-    QHostAddress addr(addrStr);
-    uint16_t port = portStr.toUInt(&isUint);
-
-    if (isUint == false)
-    {
-        emit showLog(LogLevel_ERR, "Local Port");
-        return;
-    }
-
-    if (addr.protocol() != QAbstractSocket::IPv4Protocol\
-            && addrStr != "0.0.0.0")
-    {
-        // ipv4 invalid or all
-        emit showLog(LogLevel_ERR, "Local Addr Err");
-        return;
-    }
-
     if (m_netUnit.netState == 0)
     {
         // try to connect
+        bool isUint = false;
+        QString addrStrLocal = ui->combo_netAddrLocal->currentText();
+        QString portStrLocal = ui->lineEdit_netPortLocal->text();
+        if (portStrLocal == "Auto")
+            portStrLocal = "0";
+        QHostAddress addrLocal(addrStrLocal);
+        uint16_t portLocal = portStrLocal.toUInt(&isUint);
+
+        if (isUint == false)
+        {
+            emit showLog(LogLevel_ERR, "Local port invalid");
+            return;
+        }
+
+        if (addrLocal.protocol() != QAbstractSocket::IPv4Protocol)
+        {
+            // ipv4 invalid
+            emit showLog(LogLevel_ERR, "Local addr invalid");
+            return;
+        }
+
         switch (m_netUnit.netType)
         {
         case NetType_UDP:
@@ -1678,30 +1843,39 @@ void Widget::on_button_netSwitch_clicked()
                 // if has bound, abort
                 netStop();
             }
-            if (m_udpSocket->bind(addr, port))
+            if (m_udpSocket->bind(addrLocal, portLocal))
             {
-                m_netUnit.addrLocal[NetType_UDP] = addrStr;
-                m_netUnit.portLocal[NetType_UDP] = portStr;
+                if (portLocal == 0)
+                {
+                    portLocal = m_udpSocket->localPort();
+                    portStrLocal = QString(portLocal);
+                }
+                m_netUnit.addrLocal[NetType_UDP] = addrStrLocal;
+                m_netUnit.portLocal[NetType_UDP] = portStrLocal;
                 on_netConnected();
-                if (port == 0)
-                    emit showLog(LogLevel_INF, "端口号为0, 已自动获取");
-                emit showLog(LogLevel_INF, QString::asprintf("本地端口成功绑定至%s:%d", \
-                                                             m_udpSocket->localAddress().toString().toUtf8().data(), \
-                                                             m_udpSocket->localPort()));
             }
             else
-            {
-                emit showLog(LogLevel_INF, "UDP Port bind failed!");
-            }
+                emit showLog(LogLevel_INF, "Udp Port bind failed!");
             break;
         case NetType_TCPC:
-            m_netUnit.addrLocal[NetType_TCPC] = addrStr;
+        {
+            QString addrStrTarget = ui->combo_netAddrTarget->currentText();
+            QString portStrTarget = ui->lineEdit_netPortTarget->text();
+            QHostAddress addrTarget(addrStrTarget);
+            uint16_t portTarget = portStrTarget.toUInt(&isUint);
 
-            if (ui->lineEdit_netPortLocal->text() != "Auto")
-                m_netUnit.portLocal[NetType_TCPC] = ui->lineEdit_netPortLocal->text();
+            if (isUint == false)
+            {
+                emit showLog(LogLevel_ERR, "Target port invalid");
+                return;
+            }
 
-            m_netUnit.addrRemote[NetType_TCPC] = ui->combo_netAddrRemote->currentText();
-            m_netUnit.portRemote[NetType_TCPC] = ui->lineEdit_netPortRemote->text();
+            if (addrTarget.protocol() != QAbstractSocket::IPv4Protocol)
+            {
+                // ipv4 invalid
+                emit showLog(LogLevel_ERR, "Target addr invalid");
+                return;
+            }
 
             if (m_tcpClient->state() != QTcpSocket::UnconnectedState)
             {
@@ -1710,41 +1884,48 @@ void Widget::on_button_netSwitch_clicked()
                 if (!m_tcpClient->waitForDisconnected(1000))
                     netStop();
             }
-            if (ui->lineEdit_netPortLocal->text() != "Auto" && false)
+
+            if (portLocal != 0)
             {
-                // 如果需要手动配置本地端口，先暂时强制不使用
-                if (!m_tcpClient->bind(QHostAddress(m_netUnit.addrLocal[NetType_TCPC]), m_netUnit.portLocal[NetType_TCPC].toUInt()))
+                // 如果需要手动配置本地端口
+                if (!m_tcpClient->bind(addrLocal, portLocal))
                 {
                     // 本地端口绑定失败
-                    emit showLog(LogLevel_ERR, QString("本地端口绑定失败<br>IP:" + m_netUnit.addrLocal[NetType_TCPC]
-                                                        + "<br>端口:" + m_netUnit.portLocal[NetType_TCPC] + "<br>原因:"
-                                                        + m_tcpClient->errorString()));
+                    emit showLog(
+                        LogLevel_ERR,
+                        QString("本地端口手动绑定失败<br>IP:"
+                                + addrStrLocal + ":" + portStrLocal
+                                + "<br>原因:" + m_tcpClient->errorString()));
                     return;
                 }
             }
 
-            m_tcpClient->connectToHost(QHostAddress(m_netUnit.addrRemote[NetType_TCPC]),
-                                       m_netUnit.portRemote[NetType_TCPC].toUInt());
+            m_tcpClient->connectToHost(addrTarget, portTarget);
             break;
+        }
         case NetType_TCPS:
             if (m_tcpServer->isListening())
             {
+                // if port has listen, stop
                 netStop();
                 ui->button_netSwitch->setText("开始监听");
             }
             else
             {
-                if (m_tcpServer->listen(QHostAddress(m_netUnit.addrLocal[NetType_TCPS]),
-                                        m_netUnit.portLocal[NetType_TCPS].toUInt()))
+                if (m_tcpServer->listen(addrLocal, portLocal))
                 {
+                    m_netUnit.addrLocal[NetType_TCPS] = addrStrLocal;
+                    m_netUnit.portLocal[NetType_TCPS] = portStrLocal;
                     emit showLog(LogLevel_INF, "启动监听成功");
                     ui->button_netSwitch->setText("停止监听");
                     ui->combo_netType->setEnabled(false);
                     ui->combo_netAddrLocal->setEnabled(false);
                     ui->lineEdit_netPortLocal->setEnabled(false);
+                    m_netUnit.netState = 1;
                 }
                 else
-                    emit showLog(LogLevel_INF, "启动监听失败, 原因:" + m_tcpServer->errorString());
+                    emit showLog(LogLevel_INF, "启动监听失败, 原因:" +
+                                                   m_tcpServer->errorString());
             }
             break;
         default: break;
@@ -1753,51 +1934,8 @@ void Widget::on_button_netSwitch_clicked()
     else
     {
         // try to disconnect
-        switch (m_netUnit.netType)
-        {
-        case NetType_UDP:
-            if (m_udpSocket->state() == QUdpSocket::BoundState)
-            {
-                // if has bound, abort
-                m_udpSocket->abort();
-                // check again
-                if (m_udpSocket->state() != QUdpSocket::BoundState)
-                {
-                    emit showLog(LogLevel_INF, "端口解绑成功!");
-                }
-                else
-                {
-                    emit showLog(LogLevel_ERR, "端口解绑异常!!!");
-                }
-            }
-            else
-            {
-                emit showLog(LogLevel_WAR, "端口未绑定!");
-            }
-            ui->button_netSwitch->setText("绑定端口");
-            break;
-        case NetType_TCPC:
-            if (m_tcpClient->state() != QTcpSocket::UnconnectedState)
-            {
-                // 如果当前socket已连接，则先断开
-                m_tcpClient->disconnectFromHost();
-                if (!m_tcpClient->waitForDisconnected(1000))
-                    m_tcpClient->abort();
-            }
-            break;
-        case NetType_TCPS:
-            netStop();
-            break;
-        default:
-            break;
-        }
-        ui->combo_netType->setEnabled(true);
-        ui->combo_netAddrLocal->setEnabled(true);
-        ui->lineEdit_netPortLocal->setEnabled(true);
-        ui->combo_netAddrRemote->setEnabled(true);
-        ui->lineEdit_netPortRemote->setEnabled(true);
-        m_netUnit.netState = 0;
-        emit showLog(LogLevel_INF, "网络连接已断开");
+        netStop();
+        emit showLog(LogLevel_INF, "网络已断开");
     }
 }
 
@@ -1806,34 +1944,77 @@ void Widget::netStop()
     switch (m_netUnit.netType)
     {
     case NetType_UDP:
-        m_udpSocket->abort();
-        emit showLog(LogLevel_INF, "udp bind was stop");
+        if (m_udpSocket->state() == QUdpSocket::BoundState)
+        {
+            // if has bound, try to unbind
+            m_udpSocket->abort();
+            // check again
+            if (m_udpSocket->state() != QUdpSocket::BoundState)
+            {
+                emit showLog(LogLevel_INF, "端口解绑成功!");
+            }
+            else
+            {
+                emit showLog(LogLevel_ERR, "端口解绑异常!!!");
+            }
+        }
+        else
+        {
+            emit showLog(LogLevel_WAR, "端口未绑定!");
+        }
+        ui->button_netSwitch->setText("绑定端口");
+        emit showLog(LogLevel_INF, "Udp bind was stop");
+        break;
     case NetType_TCPC:
-        m_tcpClient->abort();
+        if (m_tcpClient->state() != QTcpSocket::UnconnectedState)
+        {
+            // if socket was connected, try to disconnect
+            m_tcpClient->disconnectFromHost();
+            if (!m_tcpClient->waitForDisconnected(1000))
+                m_tcpClient->abort();
+        }
+        ui->button_netSwitch->setText("开始连接");
         emit showLog(LogLevel_INF, "Tcp Client connection was stop");
         break;
     case NetType_TCPS:
         if (m_tcpServer->isListening())
         {
-            while (!m_netUnit.tcpClientList.isEmpty())
-            {
-                QTcpSocket *socket = m_netUnit.tcpClientList.takeFirst();
-                if (socket->state() == QTcpSocket::ConnectedState)
-                {
-                    socket->disconnectFromHost();
-                    if (!socket->waitForDisconnected(1000))
-                        socket->abort();
-                }
-                socket->deleteLater();
-            }
+            ui->combo_netClient->setCurrentIndex(0);
+            on_button_netClientClose_clicked();
             m_tcpServer->close();
             emit showLog(LogLevel_INF, "Tcp Server was stop");
         }
+        ui->button_netSwitch->setText("开始监听");
         break;
     default:
         break;
     }
+    ui->combo_netType->setEnabled(true);
+    ui->combo_netAddrLocal->setEnabled(true);
+    ui->lineEdit_netPortLocal->setEnabled(true);
+    ui->combo_netAddrTarget->setEnabled(true);
+    ui->lineEdit_netPortTarget->setEnabled(true);
     m_netUnit.netState = 0;
+}
+
+void Widget::netRefresh()
+{
+    // refresh ip address
+    QString str = QHostInfo::localHostName();
+    QHostInfo hostInfo = QHostInfo::fromName(str);
+    QList<QHostAddress> addrList = hostInfo.addresses();
+    foreach (QHostAddress hostAddr, addrList)
+    {
+        if (QAbstractSocket::IPv4Protocol == hostAddr.protocol())
+        {
+            ui->combo_netAddrLocal->addItem(hostAddr.toString());
+            ui->combo_netAddrTarget->addItem(hostAddr.toString());
+        }
+    }
+    ui->combo_netAddrLocal->addItem("127.0.0.1");
+    ui->combo_netAddrTarget->addItem("127.0.0.1");
+    ui->combo_netAddrLocal->addItem("0.0.0.0");
+    ui->combo_netAddrTarget->addItem("0.0.0.0");
 }
 
 void Widget::on_netConnected()
@@ -1848,11 +2029,17 @@ void Widget::on_netConnected()
         break;
     case NetType_TCPC:
         ui->button_netSwitch->setText("断开连接");
-        ui->combo_netAddrRemote->setEnabled(false);
-        ui->lineEdit_netPortRemote->setEnabled(false);
+        ui->combo_netAddrTarget->setEnabled(false);
+        ui->lineEdit_netPortTarget->setEnabled(false);
+
+        m_netUnit.addrLocal[NetType_TCPC] = m_tcpClient->localAddress().toString();
+        m_netUnit.portLocal[NetType_TCPC] = QString::number(m_tcpClient->localPort());
+        m_netUnit.addrTarget[NetType_TCPC] = m_tcpClient->peerAddress().toString();
+        m_netUnit.portTarget[NetType_TCPC] = QString::number(m_tcpClient->peerPort());
+
         succMsg = QString("成功连接到服务端!")
                 + "<br>客户端:" + m_netUnit.addrLocal[NetType_TCPC] + ":" + m_netUnit.portLocal[NetType_TCPC]
-                + "<br>服务端:" + m_netUnit.addrRemote[NetType_TCPC] + ":" + m_netUnit.portRemote[NetType_TCPC];
+                + "<br>服务端:" + m_netUnit.addrTarget[NetType_TCPC] + ":" + m_netUnit.portTarget[NetType_TCPC];
         break;
     default:
         break;
@@ -1863,7 +2050,7 @@ void Widget::on_netConnected()
     ui->lineEdit_netPortLocal->setEnabled(false);
     m_netUnit.netState = 1;
 
-    emit showLog(LogLevel_INF, succMsg);
+    emit showLog(LogLevel_COlORFUL, FONT_COLOR_DARK_ORANGE + succMsg);
 }
 
 void Widget::on_netDisconnected()
@@ -1872,10 +2059,36 @@ void Widget::on_netDisconnected()
     {
     case NetType_TCPC:
         netStop();
-        emit showLog(LogLevel_INF, "net has disconnected");
+        emit showLog(LogLevel_INF, "Net has disconnected");
         break;
     case NetType_TCPS:
+    {
+        int32_t connIndex = -1;
+        QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
+        QString socketStr = socket->peerAddress().toString() + ":" + QString::number(socket->peerPort());
+        for (int32_t i = 0; i < m_netUnit.tcpClientList.size(); i++)
+        {
+            if (socket == m_netUnit.tcpClientList.at(i))
+            {
+                connIndex = i;
+                break;
+            }
+        }
+        if (connIndex >= 0)
+        {
+            m_netUnit.tcpClientList.removeAt(connIndex);
+            ui->combo_netClient->removeItem(connIndex);
+            ui->combo_netClient->setItemText(0, QString::asprintf("All Client(%d)",
+                                                m_netUnit.tcpClientList.size()));
+            emit showLog(LogLevel_INF, "Client offline:<br>" + socketStr);
+        }
+        else
+        {
+            emit showLog(LogLevel_ERR, "Unexpect client offline:<br>" + socketStr);
+        }
+        socket->deleteLater();
         break;
+    }
     default:
         break;
     }
@@ -1904,7 +2117,7 @@ void Widget::on_netReadyRead()
             else
             {
                 // recv failed
-                emit showLog(LogLevel_ERR, QString::asprintf("recv failed, errCode:%d, reason:%s", \
+                emit showLog(LogLevel_ERR, QString::asprintf("Recv failed, errCode:%d, reason:%s", \
                                                              m_udpSocket->error(), \
                                                              m_udpSocket->errorString().toUtf8().data()));
                 return;
@@ -1918,12 +2131,11 @@ void Widget::on_netReadyRead()
     {
         QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
 
-        if (!socket || !m_netUnit.tcpClientList.contains(socket))
-            return;
+        if (!socket || !m_netUnit.tcpClientList.contains(socket)) return;
 
         data = socket->readAll(); // Read all data in QByteArray
-        dataInfo += "from" + socket->peerAddress().toString() \
-                + ':' + QString::number(socket->peerPort()) + " ";
+        dataInfo += "from " + socket->peerAddress().toString() + ':' +
+                    QString::number(socket->peerPort()) + " ";
         break;
     }
     default:
@@ -1954,25 +2166,25 @@ void Widget::on_netStateChanged(QAbstractSocket::SocketState socketState)
     switch (socketState)
     {
     case QAbstractSocket::UnconnectedState:
-        msg = "scoket:UnconnectedState";
+        msg = "Scoket:UnconnectedState";
         break;
     case QAbstractSocket::HostLookupState:
-        msg = "scoket:HostLookupState";
+        msg = "Scoket:HostLookupState";
         break;
     case QAbstractSocket::ConnectingState:
-        msg = "scoket:ConnectingState";
+        msg = "Scoket:ConnectingState";
         break;
     case QAbstractSocket::ConnectedState:
-        msg = "scoket:ConnectedState";
+        msg = "Scoket:ConnectedState";
         break;
     case QAbstractSocket::BoundState:
-        msg = "scoket:BoundState";
+        msg = "Scoket:BoundState";
         break;
     case QAbstractSocket::ClosingState:
-        msg = "scoket:ClosingState";
+        msg = "Scoket:ClosingState";
         break;
     case QAbstractSocket::ListeningState:
-        msg = "scoket:ListeningState";
+        msg = "Scoket:ListeningState";
     }
 
     emit showLog(LogLevel_DBG, msg);
@@ -1981,7 +2193,7 @@ void Widget::on_netStateChanged(QAbstractSocket::SocketState socketState)
 void Widget::on_netSocketErr(QAbstractSocket::SocketError error)
 {
     Q_UNUSED(error);
-    emit showLog(LogLevel_ERR, "socket err: " + m_tcpClient->errorString());
+    emit showLog(LogLevel_ERR, "Socket err: " + m_tcpClient->errorString());
 }
 
 void Widget::on_netNewConnection()
@@ -1996,16 +2208,22 @@ void Widget::on_netNewConnection()
 
         connect(socket, &QTcpSocket::disconnected, this, &Widget::on_netDisconnected);
         connect(socket, &QTcpSocket::readyRead, this, &Widget::on_netReadyRead);
-//        connect(socket, &QTcpSocket::error, this, &Widget::on_netSocketErr);
+        // connect(socket, &QTcpSocket::error, this, &Widget::on_netSocketErr);
         m_netUnit.tcpClientList.append(socket);
+        ui->combo_netClient->setItemText(0, QString::asprintf("All Client(%d)",
+                                            m_netUnit.tcpClientList.size()));
         ui->combo_netClient->addItem(addr);
-        emit showLog(LogLevel_INF, "new client online: " + addr);
+        emit showLog(LogLevel_COlORFUL, FONT_COLOR_DARK_ORANGE "New client online: " + addr);
     }
 }
 
 void Widget::netSend(uint8_t *buf, int32_t len)
 {
     int32_t sendLen = 0;
+    QString targetInfo = "";
+    QString addrStrTarget = ui->combo_netAddrTarget->currentText();
+    QString portStrTarget = ui->lineEdit_netPortTarget->text();
+    uint16_t portTarget = 0;
 
     switch (m_netUnit.netType)
     {
@@ -2013,123 +2231,191 @@ void Widget::netSend(uint8_t *buf, int32_t len)
     {
         if (m_udpSocket->state() != QUdpSocket::BoundState)
         {
-            emit showLog(LogLevel_ERR, "UDP has not bound local port!");
+            emit showLog(LogLevel_ERR, "Udp has not bound local port!");
             return;
         }
         bool isUint = false;
-        QString addrStr = ui->combo_netAddrRemote->currentText();
-        QString portStr = ui->lineEdit_netPortRemote->text();
-        QHostAddress addr(addrStr);
-        uint16_t port = portStr.toUInt(&isUint);
+        addrStrTarget = ui->combo_netAddrTarget->currentText();
+        portStrTarget = ui->lineEdit_netPortTarget->text();
+        QHostAddress addrTarget(addrStrTarget);
+        portTarget = portStrTarget.toUInt(&isUint);
         if (isUint == false)
         {
-            emit showLog(LogLevel_ERR, "UDP Remote Port Err!");
+            emit showLog(LogLevel_ERR, "Udp Target Port Err!");
             return;
         }
-        if (addr.protocol() != QAbstractSocket::IPv4Protocol\
-                && addrStr != "0.0.0.0")
+        if (addrTarget.protocol() != QAbstractSocket::IPv4Protocol)
         {
-            // ipv4 invalid or all
-            emit showLog(LogLevel_ERR, "UDP Remote Addr Err");
+            // ipv4 invalid
+            emit showLog(LogLevel_ERR, "Udp Target Addr Err");
             return;
         }
 
-        m_netUnit.addrRemote[NetType_UDP] = addrStr;
-        m_netUnit.portRemote[NetType_UDP] = portStr;
+        m_netUnit.addrTarget[NetType_UDP] = addrStrTarget;
+        m_netUnit.portTarget[NetType_UDP] = portStrTarget;
+        targetInfo = addrStrTarget + ":" + portStrTarget + " ";
 
         m_netMutex.lock();
-        sendLen = m_udpSocket->writeDatagram((char *)buf, len, addr, port);
+        sendLen = m_udpSocket->writeDatagram((char *)buf, len, addrTarget, portTarget);
         m_netMutex.unlock();
         break;
     }
     case NetType_TCPC:
         if (m_tcpClient->state() != QTcpSocket::ConnectedState)
         {
-            emit showLog(LogLevel_WAR, "网口未打开, 发送失败");
+            emit showLog(LogLevel_WAR, "Socket is unconnected, send failed");
             return;
         }
+        addrStrTarget = m_tcpClient->peerAddress().toString();
+        portStrTarget = QString::number(m_tcpClient->peerPort());
+        targetInfo = addrStrTarget + ":" + portStrTarget + " ";
         m_netMutex.lock();
         sendLen = m_tcpClient->write((char *)buf, len);
         m_netMutex.unlock();
         break;
     case NetType_TCPS:
     {
-        QString sendAddr = "";
-        uint16_t sendPort = 0;
         bool isSend = false;
         if (ui->combo_netClient->count() < 2)
         {
-            emit showLog(LogLevel_INF, "无客户端已连接, 发送失败");
+            emit showLog(LogLevel_ERR, "No active connection!");
             return;
         }
 
         if (ui->combo_netClient->currentIndex() > 0)
         {
+            // not send to all
             QStringList strList = ui->combo_netClient->currentText().split(':');
-            sendAddr = strList.at(0);
-            sendPort = strList.at(1).toUInt();
+            addrStrTarget = strList.at(0);
+            portStrTarget = strList.at(1);
+            portTarget = portStrTarget.toUInt();
+            targetInfo = addrStrTarget + ":" + portStrTarget + " ";
         }
 
         foreach (QTcpSocket *socket, m_netUnit.tcpClientList)
         {
-            if (ui->combo_netClient->currentIndex() == 0 \
-                    || (socket->peerAddress().toString() == sendAddr \
-                    && socket->peerPort() == sendPort))
+            if ((ui->combo_netClient->currentIndex() == 0)
+                    || (socket->peerAddress().toString() == addrStrTarget
+                            && socket->peerPort() == portTarget))
             {
+                addrStrTarget = socket->peerAddress().toString();
+                portStrTarget = QString::number(socket->peerPort());
+                targetInfo = addrStrTarget + ":" + portStrTarget + " ";
                 if (socket->state() != QTcpSocket::ConnectedState)
                 {
-                    emit showLog(LogLevel_ERR, "网口未打开, 发送失败");
-                    return;
+                    emit showLog(LogLevel_ERR, targetInfo + "socket is unconnected, send failed");
+                    continue;
                 }
                 m_netMutex.lock();
                 sendLen = socket->write((char *)buf, len);
                 m_netMutex.unlock();
                 isSend = true;
+
+                if (sendLen >= 0)
+                {
+                    m_dataLogDlgNet->m_sendByte += sendLen;
+                    m_dataLogDlgNet->m_sendFrm++;
+                    emit updateDataCntNet();
+
+                    if (m_dataLogDlgNet->m_sendMode != 0)
+                        emit dataShowNet(buf, len, true, "# Send to " + targetInfo);
+                }
+                else
+                    emit showLog(LogLevel_ERR, "发送失败!");
             }
         }
         if (!isSend)
         {
-            emit showLog(LogLevel_ERR, "未找到客户端" + sendAddr + ":" + QString::number(sendPort) + "发送失败");
+            emit showLog(LogLevel_ERR, "Target client "
+                + targetInfo + "not found, send failed");
         }
-        break;
+        return;
     }
     default: return;
     }
 
-    if (sendLen < 0)
-        emit showLog(LogLevel_ERR, "发送失败!");
-    else
+    if (sendLen >= 0)
     {
         m_dataLogDlgNet->m_sendByte += sendLen;
         m_dataLogDlgNet->m_sendFrm++;
         emit updateDataCntNet();
 
         if (m_dataLogDlgNet->m_sendMode != 0)
-            emit dataShowNet(buf, len, true, "# Recv ");
+            emit dataShowNet(buf, len, true, "# Send to " + targetInfo);
     }
+    else
+        emit showLog(LogLevel_ERR, "发送失败!");
 }
 
 void Widget::on_combo_netType_currentIndexChanged(int index)
 {
     // save current config
     m_netUnit.addrLocal[m_netUnit.netType] = ui->combo_netAddrLocal->currentText();
-    m_netUnit.portLocal[m_netUnit.netType] = ui->lineEdit_netPortLocal->text();
     if (m_netUnit.netType < 2)
     {
-        m_netUnit.isLocalPortAuto[m_netUnit.netType] = ui->check_netPortLocal->isChecked();
-        m_netUnit.addrRemote[m_netUnit.netType] = ui->combo_netAddrRemote->currentText();
-        m_netUnit.portRemote[m_netUnit.netType] = ui->lineEdit_netPortRemote->text();
+        // UDP or TCP Client
+        // save target info and is local port auto
+        m_netUnit.addrTarget[m_netUnit.netType] = ui->combo_netAddrTarget->currentText();
+        m_netUnit.portTarget[m_netUnit.netType] = ui->lineEdit_netPortTarget->text();
+        m_netUnit.isPortLocalAuto[m_netUnit.netType] = ui->check_netPortLocal->isChecked();
+        if (!ui->check_netPortLocal->isChecked())
+            m_netUnit.portLocal[m_netUnit.netType] = ui->lineEdit_netPortLocal->text();
     }
+    else
+        m_netUnit.portLocal[m_netUnit.netType] = ui->lineEdit_netPortLocal->text();
+
+    // turn to selected net type
     m_netUnit.netType = index;
 
-    // load new net type config
-    int32_t textIndex = 0;
-    textIndex = ui->combo_netAddrLocal->findText(m_netUnit.addrLocal[m_netUnit.netType]);
-    textIndex = textIndex < 0 ? 0 : textIndex;
-    ui->combo_netAddrLocal->setCurrentIndex(textIndex);
+    // load selected net type config
+    int32_t addrIndex = 0;
+    addrIndex = ui->combo_netAddrLocal->findText(m_netUnit.addrLocal[m_netUnit.netType]);
+    addrIndex = addrIndex < 0 ? 0 : addrIndex;
+    ui->combo_netAddrLocal->setCurrentIndex(addrIndex);
     ui->lineEdit_netPortLocal->setText(m_netUnit.portLocal[m_netUnit.netType]);
 
     // deal widget show
+    if (m_netUnit.netType < 2)
+    {
+        // UDP or TCP Client
+        // show widget of UDP/TCPC
+        ui->label_netAddrTarget->show();
+        ui->combo_netAddrTarget->show();
+        ui->label_netPortTarget->show();
+        ui->lineEdit_netPortTarget->show();
+        ui->check_netPortLocal->show();
+
+        // hide widget of TCPS
+        ui->combo_netClient->hide();
+        ui->button_netClientClose->hide();
+
+        addrIndex = ui->combo_netAddrTarget->findText(m_netUnit.addrTarget[m_netUnit.netType]);
+        addrIndex = addrIndex < 0 ? 0 : addrIndex;
+        ui->combo_netAddrTarget->setCurrentIndex(addrIndex);
+        ui->lineEdit_netPortTarget->setText(m_netUnit.portTarget[m_netUnit.netType]);
+        ui->check_netPortLocal->setChecked(m_netUnit.isPortLocalAuto[m_netUnit.netType]);
+        if (ui->check_netPortLocal->isChecked())
+            ui->lineEdit_netPortLocal->setText("Auto");
+    }
+    else
+    {
+        // TCP Server
+        // hide widget of UDP/TCPC
+        ui->label_netAddrTarget->hide();
+        ui->combo_netAddrTarget->hide();
+        ui->label_netPortTarget->hide();
+        ui->lineEdit_netPortTarget->hide();
+        ui->check_netPortLocal->hide();
+
+        // show widget of TCPS
+        ui->combo_netClient->show();
+        ui->button_netClientClose->show();
+
+        // set local port input lineEdit to write able
+        if (ui->lineEdit_netPortLocal->isReadOnly())
+            ui->lineEdit_netPortLocal->setReadOnly(false);
+    }
+
     switch (m_netUnit.netType)
     {
     case NetType_UDP: ui->button_netSwitch->setText("绑定端口"); break;
@@ -2137,66 +2423,32 @@ void Widget::on_combo_netType_currentIndexChanged(int index)
     case NetType_TCPS: ui->button_netSwitch->setText("监听端口"); break;
     default: break;
     }
-
-    if (m_netUnit.netType < 2)
-    {
-        // UDP or TCP Client
-        // show widget of UDP/TCPC
-        ui->label_netAddrRemote->show();
-        ui->combo_netAddrRemote->show();
-        ui->label_netPortRemote->show();
-        ui->lineEdit_netPortRemote->show();
-        ui->check_netPortLocal->show();
-
-        // hide widget of TCPS
-        ui->combo_netClient->hide();
-        ui->button_netClientClose->hide();
-        textIndex = ui->combo_netAddrRemote->findText(m_netUnit.addrRemote[m_netUnit.netType]);
-        textIndex = textIndex < 0 ? 0 : textIndex;
-        ui->combo_netAddrRemote->setCurrentIndex(textIndex);
-
-        ui->lineEdit_netPortRemote->setText(m_netUnit.portRemote[m_netUnit.netType]);
-        ui->check_netPortLocal->setChecked(m_netUnit.isLocalPortAuto[m_netUnit.netType]);
-    }
-    else
-    {
-        // TCP Server
-        // hide widget of UDP/TCPC
-        ui->label_netAddrRemote->hide();
-        ui->combo_netAddrRemote->hide();
-        ui->label_netPortRemote->hide();
-        ui->lineEdit_netPortRemote->hide();
-        ui->check_netPortLocal->hide();
-
-        // show widget of TCPS
-        ui->combo_netClient->show();
-        ui->button_netClientClose->show();
-
-        // set local port inpu edit to write able
-        if (ui->lineEdit_netPortLocal->isReadOnly())
-            ui->lineEdit_netPortLocal->setReadOnly(false);
-    }
 }
 
 void Widget::on_check_netPortLocal_toggled(bool checked)
 {
     if (checked)
     {
+        // stored port
         m_netUnit.portLocal[m_netUnit.netType] = ui->lineEdit_netPortLocal->text();
         ui->lineEdit_netPortLocal->setText("Auto");
     }
     else
     {
+        // restore port
         ui->lineEdit_netPortLocal->setText(m_netUnit.portLocal[m_netUnit.netType]);
     }
 
     ui->lineEdit_netPortLocal->setReadOnly(checked);
-    m_netUnit.isLocalPortAuto[m_netUnit.netType] = checked;
+    m_netUnit.isPortLocalAuto[m_netUnit.netType] = checked;
 }
 
 void Widget::on_button_netRefresh_clicked()
 {
-
+    ui->combo_netAddrLocal->clear();
+    ui->combo_netAddrTarget->clear();
+    netRefresh();
+    emit showLog(LogLevel_INF, "网口刷新完成");
 }
 
 void Widget::on_check_saveAsTemp_toggled(bool checked)
@@ -2213,5 +2465,81 @@ void Widget::on_check_saveAsTemp_toggled(bool checked)
 
 void Widget::on_button_netClientClose_clicked()
 {
+    int32_t connIndex = ui->combo_netClient->currentIndex();
 
+    if (connIndex == 0)
+    {
+        // close all connection
+        // delete list item on disconnected slot
+        foreach (QTcpSocket *socket, m_netUnit.tcpClientList)
+        {
+            if (socket->state() != QTcpSocket::UnconnectedState)
+            {
+                // if socket was connected, try to disconnect
+                socket->disconnectFromHost();
+                if (!socket->waitForDisconnected(1000))
+                    socket->abort();
+            }
+        }
+    }
+    else
+    {
+        // close select connection
+        // delete list item on disconnected slot
+        QTcpSocket *socket = m_netUnit.tcpClientList.at(connIndex - 1);
+        if (socket->state() != QTcpSocket::UnconnectedState)
+        {
+            // if socket was connected, try to disconnect
+            socket->disconnectFromHost();
+            if (!socket->waitForDisconnected(1000))
+                socket->abort();
+        }
+    }
+}
+
+void Widget::label_appIcon_clicked()
+{
+    static int64_t lastClickTime = 0;
+    static uint32_t iconClickCnt = 0;
+    int64_t currClickTime = QTime::currentTime().msecsSinceStartOfDay();
+    int64_t diff = currClickTime - lastClickTime;
+    if (diff < 0)
+        diff += 86400000;
+    if (diff > 3000)
+        iconClickCnt = 1;
+    else
+        iconClickCnt++;
+    lastClickTime = currClickTime;
+    if (iconClickCnt == 5)
+    {
+        if (g_isDebugMode == false)
+        {
+            // login creator
+            g_isDebugMode = true;
+            emit showLog(LogLevel_COlORFUL, FONT_COLOR_BLUEVIOLET "Login debugMode");
+        }
+        else
+        {
+            // quit creator
+            g_isDebugMode = false;
+            emit showLog(LogLevel_COlORFUL, FONT_COLOR_BLUEVIOLET "Quit debugMode");
+        }
+
+        iconClickCnt = 0;
+        lastClickTime = 0;
+    }
+}
+
+bool Widget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == ui->label_appIcon && event->type() == QEvent::MouseButtonRelease)
+    {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+        if (mouseEvent->button() == Qt::LeftButton)
+        {
+            label_appIcon_clicked();
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }

@@ -52,9 +52,9 @@ void FormCRCConf::on_button_confDone_clicked()
         if (m_crcConf.width <= 8)
             m_dataType = 0; // uint8
         else if (m_crcConf.width <= 16)
-            m_dataType = 1; // uint16
+            m_dataType = 2; // uint16
         else if (m_crcConf.width <= 32)
-            m_dataType = 2; // uint32
+            m_dataType = 4; // uint32
         else
             m_dataType = 0; // uint8
 
@@ -218,9 +218,9 @@ void FormCRCConf::on_button_generateMeter_clicked()
         m_crcConf.width = ui->spin_dataWidth->value();
 
         if (m_crcConf.width <= 8) m_dataType = 0; // uint8
-        else if (m_crcConf.width <= 16) m_dataType = 1; // uint16
-        else if (m_crcConf.width <= 24) m_dataType = 2; // uint32
-        else if (m_crcConf.width <= 32) m_dataType = 3; // uint32
+        else if (m_crcConf.width <= 16) m_dataType = 2; // uint16
+        else if (m_crcConf.width <= 24) m_dataType = 4; // uint32
+        else if (m_crcConf.width <= 32) m_dataType = 7; // uint64
         else m_dataType = 0; // uint8
 
         m_crcConf.poly = ui->lineEdit_poly->text().toUInt(&isValid, 16);

@@ -20,6 +20,7 @@ enum e_logLevel
     LogLevel_INF,
     LogLevel_WAR,
     LogLevel_ERR,
+    LogLevel_COlORFUL,
 };
 
 #endif // COMMONDEFINE_H

@@ -21,7 +21,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="resources.qrc">
-    <normaloff>:/icon/MI.ico</normaloff>:/icon/MI.ico</iconset>
+    <normaloff>:/pic/Sadaharu.png</normaloff>:/pic/Sadaharu.png</iconset>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout_3">
    <property name="spacing">
@@ -129,7 +129,7 @@
            <number>2</number>
           </property>
           <item>
-           <widget class="QRadioButton" name="radio_show_send">
+           <widget class="QRadioButton" name="radio_dontShow_send">
             <property name="text">
              <string>发送不显示</string>
             </property>
@@ -222,7 +222,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="button_clear">
+        <widget class="QPushButton" name="button_clearLog">
          <property name="text">
           <string>清除日志</string>
          </property>
@@ -247,7 +247,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="button_clearCnt">
          <property name="maximumSize">
           <size>
            <width>75</width>

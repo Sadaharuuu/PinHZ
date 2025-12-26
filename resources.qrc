@@ -1,7 +1,8 @@
 <RCC>
     <qresource prefix="/">
-        <file>icon/MI.ico</file>
         <file>pic/Readme_DataLog.png</file>
         <file>pic/Readme_PinHz.png</file>
+        <file>pic/BuildWithQt.png</file>
+        <file>pic/Sadaharu.png</file>
     </qresource>
 </RCC>

@@ -4,12 +4,24 @@
 #include <QDateTime>
 #include <QScrollBar>
 
-FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) : QWidget(parent),
+FormDataLog::FormDataLog(QWidget *parent, uint8_t modeCtrl) : QWidget(parent),
                                                              ui(new Ui::FormDataLog)
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
 
+    setModeCtrl(modeCtrl);
+
+    on_button_clearCnt_clicked();
+}
+
+FormDataLog::~FormDataLog()
+{
+    delete ui;
+}
+
+void FormDataLog::setModeCtrl(uint8_t modeCtrl)
+{
     if (modeCtrl & 0x01)
     {
         ui->radio_ASCII->setChecked(true);
@@ -37,17 +49,10 @@ FormDataLog::FormDataLog(QWidget *parent, int8_t modeCtrl) : QWidget(parent),
         }
         else
         {
-            ui->radio_show_send->setChecked(true);
+            ui->radio_dontShow_send->setChecked(true);
             m_sendMode = 0;
         }
     }
-
-    on_pushButton_clicked();
-}
-
-FormDataLog::~FormDataLog()
-{
-    delete ui;
 }
 
 void FormDataLog::checkEmptyline()
@@ -112,7 +117,7 @@ void FormDataLog::on_dataShow(uint8_t *data, int32_t len, bool isSend, QString d
     }
 }
 
-void FormDataLog::on_button_clear_clicked()
+void FormDataLog::on_button_clearLog_clicked()
 {
     ui->txtBs_recvData->clear();
     m_isLogModeChanged = true;
@@ -123,13 +128,13 @@ void FormDataLog::on_check_isLog_toggled(bool checked)
     static int8_t saveSendMode = 0;
     if (checked)
     {
-        // 日志模式
-        ui->radio_show_send->setEnabled(true);
+        // log mode
+        ui->radio_dontShow_send->setEnabled(true);
         ui->radio_ASCII_send->setEnabled(true);
         ui->radio_hex_send->setEnabled(true);
         switch (saveSendMode)
         {
-        case 0: ui->radio_show_send->setChecked(true); break;
+        case 0: ui->radio_dontShow_send->setChecked(true); break;
         case 1: ui->radio_ASCII_send->setChecked(true); break;
         case 2: ui->radio_hex_send->setChecked(true); break;
         default: break;
@@ -137,11 +142,11 @@ void FormDataLog::on_check_isLog_toggled(bool checked)
     }
     else
     {
-        saveSendMode = ui->radio_show_send->isChecked() ? 0 \
+        saveSendMode = ui->radio_dontShow_send->isChecked() ? 0 \
                         : ui->radio_ASCII_send->isChecked() ? 1 \
                         : ui->radio_hex_send->isChecked() ? 2 : 0;
-        ui->radio_show_send->setChecked(true);
-        ui->radio_show_send->setEnabled(false);
+        ui->radio_dontShow_send->setChecked(true);
+        ui->radio_dontShow_send->setEnabled(false);
         ui->radio_ASCII_send->setEnabled(false);
         ui->radio_hex_send->setEnabled(false);
     }
@@ -159,7 +164,7 @@ void FormDataLog::on_radio_hex_toggled(bool checked)
     m_recvMode = checked ? 2 : m_recvMode;
 }
 
-void FormDataLog::on_radio_show_send_toggled(bool checked)
+void FormDataLog::on_radio_dontShow_send_toggled(bool checked)
 {
     m_sendMode = checked ? 0 : m_sendMode;
 }
@@ -184,7 +189,7 @@ void FormDataLog::on_updateDataCnt()
     ui->lineEdit_byteCnt->setText(str);
 }
 
-void FormDataLog::on_pushButton_clicked()
+void FormDataLog::on_button_clearCnt_clicked()
 {
     m_recvFrm = m_recvByte = m_sendFrm = m_sendByte = 0;
     on_updateDataCnt();

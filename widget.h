@@ -43,11 +43,11 @@ struct s_netUnit {
     int8_t netState;
     QString addrLocal[3];
     QString portLocal[3];
-    QString addrRemote[3];
-    QString portRemote[3];
+    QString addrTarget[3];
+    QString portTarget[3];
 
     // for udp & tcpc
-    bool isLocalPortAuto[2];
+    bool isPortLocalAuto[2];
     // for tcps
     QList<QTcpSocket *> tcpClientList;
 };
@@ -144,11 +144,11 @@ private:
     FormDataLog *m_dataLogDlgSerial = nullptr;
     FormDataLog *m_dataLogDlgNet = nullptr;
 
-    // bit 0-1: recv:                01 = ASCII     10 = HEX
-    // bit 2-3: send: 00 = dont show 01 = ASCII     10 = HEX
-    // bit 4-5: log:  00 = notLog    01 = isLog
+    // bit [0:1]: recv:                01 = ASCII     10 = HEX
+    // bit [2:3]: send: 00 = dont show 01 = ASCII     10 = HEX
+    // bit [4:5]: log:  00 = notLog    01 = isLog
     // default : 0x1A, logMode, all Hex
-    int8_t m_dataLogMode = 0;
+    uint8_t m_dataLogMode[2] = {0x1A, 0x1A};
 
     // 是否用字段拼好帧 EB 90 01 02 03 04 or EB90 01020304
     bool m_isFieldPinHZ = true;
@@ -190,11 +190,15 @@ private:
     void loadConf();
     void netSend(uint8_t *buf, int32_t len);
     void netStop();
+    void netRefresh();
     QString getLocalIP();
-    int8_t netConfValid_clicked(QString addr);
+    bool checkAddrValid(QString &addrStr);
+    bool checkPortValid(QString &portStr);
     // serial
     void serialSend(uint8_t *buf, int32_t len);
     void serialRefresh();
+    void label_appIcon_clicked();
+    bool eventFilter(QObject *watched, QEvent *event) override;
 };
 
 #endif // WIDGET_H
