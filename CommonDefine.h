@@ -14,7 +14,7 @@
 #define FONT_COLOR_BLUEGREEN    "<font color=\"#00B3B3\">"
 #define FONT_COLOR_BLUEVIOLET   "<font color=\"#8A2BE2\">"
 
-enum LogLevel
+enum e_logLevel
 {
     LogLevel_DBG = 0,
     LogLevel_INF,

@@ -25,19 +25,19 @@ void FormCRCConf::on_button_templateSet_clicked()
     t_crc_conf crcConf = m_crcCalc.GetTemplate(tempID);
     QString str = "";
 
-    ui->spinBox_dataWidth->setValue(crcConf.width);
+    ui->spin_dataWidth->setValue(crcConf.width);
     str.sprintf("%x", crcConf.poly);
     ui->lineEdit_poly->setText(str);
     str.sprintf("%x", crcConf.init);
     ui->lineEdit_init->setText(str);
     if (crcConf.ref_in)
-        ui->radio_refIn->setChecked(true);
-    else
         ui->radio_refIn_reverse->setChecked(true);
-    if (crcConf.ref_out)
-        ui->radio_refOut->setChecked(true);
     else
+        ui->radio_refIn->setChecked(true);
+    if (crcConf.ref_out)
         ui->radio_refOut_reverse->setChecked(true);
+    else
+        ui->radio_refOut->setChecked(true);
     str.sprintf("%x", crcConf.xor_out);
     ui->lineEdit_xorOut->setText(str);
 }
@@ -47,7 +47,7 @@ void FormCRCConf::on_button_confDone_clicked()
     bool isValid = false;
     int8_t validCode = 0;
     do {
-        m_crcConf.width = ui->spinBox_dataWidth->value();
+        m_crcConf.width = ui->spin_dataWidth->value();
 
         if (m_crcConf.width <= 8)
             m_dataType = 0; // uint8
@@ -70,8 +70,8 @@ void FormCRCConf::on_button_confDone_clicked()
             validCode = -2;
             break;
         }
-        m_crcConf.ref_in = ui->radio_refIn->isChecked();
-        m_crcConf.ref_out = ui->radio_refOut->isChecked();
+        m_crcConf.ref_in = ui->radio_refIn_reverse->isChecked();
+        m_crcConf.ref_out = ui->radio_refOut_reverse->isChecked();
         m_crcConf.xor_out = ui->lineEdit_xorOut->text().toUInt(&isValid, 16);
         if (!isValid)
         {
@@ -90,7 +90,7 @@ void FormCRCConf::on_button_convertPoly_clicked()
     bool isValid = false;
     QString binStr = "", hexStr = "", mathStr = "";
     QList<int32_t> orderList;
-    int32_t order, maxOrder = ui->spinBox_maxOrder->value();;
+    int32_t order, maxOrder = ui->spin_maxOrder->value();;
     uint64_t hexPoly = 0;
 
     if (isMath2Hex)
@@ -114,7 +114,7 @@ void FormCRCConf::on_button_convertPoly_clicked()
         }
         std::sort(orderList.rbegin(), orderList.rend());
         int32_t highestOrder = *orderList.constBegin();
-        ui->spinBox_maxOrder->setValue(highestOrder);
+        ui->spin_maxOrder->setValue(highestOrder);
 
         if (isSamplePoly)
             highestOrder--;
@@ -215,7 +215,7 @@ void FormCRCConf::on_button_generateMeter_clicked()
     int8_t validCode = 0;
     QString str = "";
     do {
-        m_crcConf.width = ui->spinBox_dataWidth->value();
+        m_crcConf.width = ui->spin_dataWidth->value();
 
         if (m_crcConf.width <= 8) m_dataType = 0; // uint8
         else if (m_crcConf.width <= 16) m_dataType = 1; // uint16

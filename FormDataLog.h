@@ -26,7 +26,7 @@ public:
     uint32_t m_recvByte = 0;
     uint32_t m_sendByte = 0;
 public slots:
-    void on_dataShow(uint8_t *data, int32_t len, bool isSend);
+    void on_dataShow(uint8_t *data, int32_t len, bool isSend, QString dataInfo);
     void on_button_clear_clicked();
     void on_updateDataCnt();
 
@@ -37,8 +37,8 @@ private slots:
     void on_radio_hex_toggled(bool checked);
     void on_radio_ASCII_send_toggled(bool checked);
     void on_radio_hex_send_toggled(bool checked);
-
-    void on_pushButton_clicked();
+    void on_pushButton_clicked();   
+    void on_check_saveAs_toggled(bool checked);
 
 private:
     Ui::FormDataLog *ui;

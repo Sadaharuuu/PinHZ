@@ -21,7 +21,6 @@ extern int32_t g_fillBytes;
 
 void FormFillItem::on_button_fill_clicked()
 {
-    //    emit showLog(LogLevel_WAR, "取消设置");
     int32_t fillData = 0;
     int32_t valueBase = 0;
     // 判断类型

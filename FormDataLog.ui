@@ -212,6 +212,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="check_autoScroll_2">
+         <property name="text">
+          <string>自动滚屏</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="button_clear">
          <property name="text">
           <string>清除日志</string>

@@ -61,7 +61,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QSpinBox" name="spinBox_dataWidth"/>
+          <widget class="QSpinBox" name="spin_dataWidth"/>
          </item>
         </layout>
        </item>
@@ -444,7 +444,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QSpinBox" name="spinBox_maxOrder">
+          <widget class="QSpinBox" name="spin_maxOrder">
            <property name="minimum">
             <number>1</number>
            </property>
@@ -599,9 +599,9 @@ p, li { white-space: pre-wrap; }
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup_3"/>
+  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_4"/>
  </buttongroups>
 </ui>

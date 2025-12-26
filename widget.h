@@ -21,11 +21,36 @@
 #include <QVector>
 #include <QWidget>
 #include <QtSerialPort>
+#include <QtNetwork>
 
 namespace Ui
 {
 class Widget;
 }
+
+enum e_netType
+{
+    NetType_UDP = 0,
+    NetType_TCPC,
+    NetType_TCPS,
+};
+
+struct s_netUnit {
+    // 0: udp 1: tcp c 2: tcp s
+    int8_t netType;
+
+    // 0: not work 1: start work, disable switch netType
+    int8_t netState;
+    QString addrLocal[3];
+    QString portLocal[3];
+    QString addrRemote[3];
+    QString portRemote[3];
+
+    // for udp & tcpc
+    bool isLocalPortAuto[2];
+    // for tcps
+    QList<QTcpSocket *> tcpClientList;
+};
 
 class Widget : public QWidget
 {
@@ -35,25 +60,23 @@ public:
     explicit Widget(QWidget *parent = 0);
     ~Widget();
 signals:
-    // log
-    void showLog(LogLevel level, QString string);
-
-    // serial
-    void serialSend(uint8_t *buf, int32_t len);
+    // Log
+    void showLog(e_logLevel level, QString string);
 
     // PinHZ
-    void dataShow(uint8_t *data, int32_t len, bool isSend);
-    void updateDataCnt();
+    void dataShowSerial(uint8_t *data, int32_t len, bool isSend, QString dataInfo);
+    void updateDataCntSerial();
+    void dataShowNet(uint8_t *data, int32_t len, bool isSend, QString dataInfo);
+    void updateDataCntNet();
 
 private slots:
     // Log
-    void on_showLog(LogLevel level, QString string);
+    void on_showLog(e_logLevel level, QString string);
     // 串口设置及基本功能
     void on_button_serialRefresh_clicked();
     void on_button_serialSwitch_clicked();
     void on_button_clearLog_clicked();
     void on_serialRecv();
-    void on_serialSend(uint8_t *buf, int32_t len);
     void on_timerOut_Run();
     void on_button_picSelect_clicked();
     void on_button_subCurRow_clicked();
@@ -75,17 +98,42 @@ private slots:
     void on_button_copyCurRow_clicked();
     void on_button_dataLog_clicked();
     void on_button_PinHZSend_clicked();
-    void on_spinBox_replyTime_valueChanged(int arg1);
+    void on_spin_replyTime_valueChanged(int arg1);
     void on_check_fieldPinHZ_toggled(bool checked);
     void on_CRCConfDone(int8_t validCode);
-    void on_spinBox_sendPeriod_valueChanged(int arg1);
+    void on_spin_sendPeriod_valueChanged(int arg1);
+    void on_combo_portMode_currentIndexChanged(int index);
+    void on_button_netSwitch_clicked();
+    void on_combo_netType_currentIndexChanged(int index);
+    void on_netConnected();
+    void on_netDisconnected();
+    void on_netReadyRead();
+    void on_netStateChanged(QAbstractSocket::SocketState socketState);
+    void on_netSocketErr(QAbstractSocket::SocketError error);
+    void on_netNewConnection();
+    void on_check_netPortLocal_toggled(bool checked);
+    void on_button_netRefresh_clicked();
+    void on_check_saveAsTemp_toggled(bool checked);
+
+    void on_button_netClientClose_clicked();
 
 private:
     Ui::Widget *ui;
     Hex2Dec m_hex2dec;
+
     // 串口
     QSerialPort *m_serialPort = nullptr;
     QMutex m_serialMutex;
+
+    // 网口
+    QUdpSocket *m_udpSocket = nullptr;
+    QTcpSocket *m_tcpClient = nullptr;
+    QTcpServer *m_tcpServer = nullptr;
+
+    QMutex m_netMutex;
+
+    s_netUnit m_netUnit;
+
     // 定时器
     QTimer *m_timer_Run = nullptr;
 
@@ -93,7 +141,9 @@ private:
     FormFillItem *m_fillItemDlg = nullptr;
 
     // 数据日志界面
-    FormDataLog *m_datalogDlg = nullptr;
+    FormDataLog *m_dataLogDlgSerial = nullptr;
+    FormDataLog *m_dataLogDlgNet = nullptr;
+
     // bit 0-1: recv:                01 = ASCII     10 = HEX
     // bit 2-3: send: 00 = dont show 01 = ASCII     10 = HEX
     // bit 4-5: log:  00 = notLog    01 = isLog
@@ -138,6 +188,13 @@ private:
     int8_t checkRowZone(int32_t row);
     void saveConf();
     void loadConf();
+    void netSend(uint8_t *buf, int32_t len);
+    void netStop();
+    QString getLocalIP();
+    int8_t netConfValid_clicked(QString addr);
+    // serial
+    void serialSend(uint8_t *buf, int32_t len);
+    void serialRefresh();
 };
 
 #endif // WIDGET_H

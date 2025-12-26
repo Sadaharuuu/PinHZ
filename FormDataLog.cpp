@@ -65,7 +65,7 @@ void FormDataLog::checkEmptyline()
     }
 }
 
-void FormDataLog::on_dataShow(uint8_t *data, int32_t len, bool isSend)
+void FormDataLog::on_dataShow(uint8_t *data, int32_t len, bool isSend, QString dataInfo)
 {
     QString str = "", dataColor = isSend ? FONT_COLOR_BLUEGREEN : FONT_COLOR_DARK_ORANGE;
     bool isASCII = isSend ? ui->radio_ASCII_send->isChecked() ? true : false \
@@ -90,7 +90,7 @@ void FormDataLog::on_dataShow(uint8_t *data, int32_t len, bool isSend)
         // log mode
         QString logInfo = QDateTime().currentDateTime().toString("[yyyy-MM-dd hh:mm:ss.zzz]");
 
-        logInfo += isSend ? "# Send " : "# Recv ";
+        logInfo += dataInfo;
         logInfo += isASCII ? "ASCII>" : "HEX>";
 
         ui->txtBs_recvData->append(FONT_COLOR_BLACK + logInfo);
@@ -188,4 +188,9 @@ void FormDataLog::on_pushButton_clicked()
 {
     m_recvFrm = m_recvByte = m_sendFrm = m_sendByte = 0;
     on_updateDataCnt();
+}
+
+void FormDataLog::on_check_saveAs_toggled(bool checked)
+{
+
 }
