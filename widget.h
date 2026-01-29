@@ -91,7 +91,7 @@ private slots:
     void on_combo_hexOrder_currentIndexChanged(int index);
     void on_button_PinHZSave_clicked();
     void on_button_PinHZLoad_clicked();
-    void on_button_PinHZReverse_clicked();
+    void on_button_PinHZDeal_clicked();
     void on_check_autoPinHZ_stateChanged(int state);
     void on_button_fillCurRow_clicked();
     void on_fillConfDone();
@@ -182,9 +182,10 @@ private:
     };
     int32_t getRowsBytes(int32_t rowStart, int32_t rowEnd);
     void updateDataZoneBytes();
-    void createItemsARow(int32_t row, QString rowHead, uint8_t dataType, QString dataHex, QString dataDec, QString comment);
-    void PinHZComboInit(int32_t row, uint8_t dataType);
+    void createItemsARow(int32_t row, QString rowHead, e_dataType dataType, QString dataHex, QString dataDec, QString comment);
+    void PinHZComboInit(int32_t row, e_dataType dataType);
     int32_t PinHZDeal(QString str, uint8_t *buf);
+    int32_t PinHZDeal2Table(uint8_t *buf);
     int8_t checkRowZone(int32_t row);
     void saveConf();
     void loadConf();
