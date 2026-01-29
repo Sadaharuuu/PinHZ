@@ -2,6 +2,7 @@
 #define HEX2DEC_H
 
 #include <QString>
+#include "CommonDefine.h"
 
 class Hex2Dec
 {
@@ -10,9 +11,9 @@ public:
     ~Hex2Dec();
 
     uint8_t Str2Array(QString &hexStr, uint8_t *buf, bool isHexStr, bool isLittleEndian);
-    QString StrFix(QString srcStr, uint8_t dataType, bool isHex, bool isLittleEndian);
-    QString Hex2DecString(QString hexStr, uint8_t dataType, bool isLittleEndian);
-    QString Dec2HexString(QString decStr, uint8_t dataType, bool isLittleEndian);
+    QString StrFix(QString srcStr, e_dataType dataType, bool isHex, bool isLittleEndian);
+    QString Hex2DecString(QString hexStr, e_dataType dataType, bool isLittleEndian);
+    QString Dec2HexString(QString decStr, e_dataType dataType, bool isLittleEndian);
     QString Hex2bit8(uint8_t *buf, bool isSigned);
     QString Hex2bit16(uint8_t *buf, bool isSigned);
     QString Hex2bit32(uint8_t *buf, bool isSigned, bool isFloat);

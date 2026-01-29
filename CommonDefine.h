@@ -23,4 +23,18 @@ enum e_logLevel
     LogLevel_COlORFUL,
 };
 
+enum e_dataType
+{
+    DataType_U08 = 0,
+    DataType_S08,
+    DataType_U16,
+    DataType_S16,
+    DataType_U32,
+    DataType_S32,
+    DataType_U64,
+    DataType_S64,
+    DataType_F32,
+    DataType_F64,
+};
+
 #endif // COMMONDEFINE_H

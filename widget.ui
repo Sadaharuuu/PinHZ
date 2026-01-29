@@ -613,19 +613,33 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="button_clearLog">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+             <underline>true</underline>
+            </font>
+           </property>
+           <property name="text">
+            <string>运行日志-&gt;清空</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QTextBrowser" name="txtBs_log">
            <property name="minimumSize">
             <size>
              <width>0</width>
              <height>100</height>
             </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="button_clearLog">
-           <property name="text">
-            <string>清除LOG</string>
            </property>
           </widget>
          </item>
@@ -1163,7 +1177,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QCheckBox" name="check_autoPinHZReverse">
+              <widget class="QCheckBox" name="check_autoPinHZDeal">
                <property name="text">
                 <string>解好帧自动挡</string>
                </property>
@@ -1316,7 +1330,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="button_PinHZReverse">
+                <widget class="QPushButton" name="button_PinHZDeal">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -1472,9 +1486,9 @@
                </widget>
               </item>
               <item>
-               <widget class="QLabel" name="label_version">
+               <widget class="QLabel" name="label_softVersion">
                 <property name="text">
-                 <string>版本:V2.00</string>
+                 <string>版本:</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>
@@ -1482,14 +1496,14 @@
                </widget>
               </item>
               <item>
-               <widget class="QLabel" name="label_6">
+               <widget class="QLabel" name="label_compileDate">
                 <property name="text">
-                 <string>编译日期:26/1/19</string>
+                 <string>编译日期:</string>
                 </property>
                </widget>
               </item>
               <item>
-               <widget class="QLabel" name="label_5">
+               <widget class="QLabel" name="label_contactInfo">
                 <property name="text">
                  <string>联系方式:Sadaharuuu@yeah.net</string>
                 </property>

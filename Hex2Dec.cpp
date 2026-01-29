@@ -19,33 +19,33 @@ Hex2Dec::~Hex2Dec()
  * @return:
  *      Dec String, return 0 when str error
  * **************************************************/
-QString Hex2Dec::Hex2DecString(QString hexStr, uint8_t dataType, bool isLittleEndian)
+QString Hex2Dec::Hex2DecString(QString hexStr, e_dataType dataType, bool isLittleEndian)
 {
     QString str = "";
     uint8_t buf[8] = {0, }, bufLen = 0;
     bufLen = Str2Array(hexStr, buf, true, isLittleEndian);
-    bool isSigned = true, isFloat = false;
+    bool isSigned = true, isFloat = true;
 
     switch (dataType) {
-    case 0: /* uint8 */ isSigned = false; /* fall-through */
-    case 1: /* sint8 */
+    case DataType_U08: /* uint8 */ isSigned = false; /* fall-through */
+    case DataType_S08: /* sint8 */
         if (bufLen != 1) str = "00";
         else str = Hex2bit8(buf, isSigned);
         break;
-    case 2: /* uint16 */ isSigned = false; /* fall-through */
-    case 3: /* sint16 */
+    case DataType_U16: /* uint16 */ isSigned = false; /* fall-through */
+    case DataType_S16: /* sint16 */
         if (bufLen != 2) str = "0000";
         else str = Hex2bit16(buf, isSigned);
         break;
-    case 8: /* float  */ isFloat = true;   /* fall-through */
-    case 4: /* uint32 */ isSigned = false; /* fall-through */
-    case 5: /* sint32 */
+    case DataType_U32: /* uint32 */ isSigned = false; /* fall-through */
+    case DataType_S32: /* sint32 */ isFloat = false;  /* fall-through */
+    case DataType_F32: /* float */
         if (bufLen != 4) str = "00000000";
         else str = Hex2bit32(buf, isSigned, isFloat);
         break;
-    case 9: /* double */ isFloat = true;   /* fall-through */
-    case 6: /* uint64 */ isSigned = false; /* fall-through */
-    case 7: /* sint64 */
+    case DataType_U64: /* uint64 */ isSigned = false; /* fall-through */
+    case DataType_S64: /* sint64 */ isFloat = false;  /* fall-through */
+    case DataType_F64: /* double */
         if (bufLen != 8) str = "0000000000000000";
         else str = Hex2bit64(buf, isSigned, isFloat);
         break;
@@ -64,7 +64,7 @@ QString Hex2Dec::Hex2DecString(QString hexStr, uint8_t dataType, bool isLittleEn
  * @return:
  *      Hex String
  * **************************************************/
-QString Hex2Dec::Dec2HexString(QString decStr, uint8_t dataType, bool isLittleEndian)
+QString Hex2Dec::Dec2HexString(QString decStr, e_dataType dataType, bool isLittleEndian)
 {
     QString str = "";
     bool isNeg = false;
@@ -73,7 +73,7 @@ QString Hex2Dec::Dec2HexString(QString decStr, uint8_t dataType, bool isLittleEn
     {
         isNeg = true;
     }
-    if (dataType < 8)
+    if (dataType < DataType_F32)
     {
         if (isNeg)
         {
@@ -86,7 +86,7 @@ QString Hex2Dec::Dec2HexString(QString decStr, uint8_t dataType, bool isLittleEn
             str = str.number(utmp64, 16);
         }
     }
-    else if (dataType == 8)
+    else if (dataType == DataType_F32)
     {
         float ftmp32 = decStr.toFloat();
         uint8_t *p = (uint8_t *)&ftmp32;
@@ -233,27 +233,26 @@ QString Hex2Dec::Hex2bit64(uint8_t *buf, bool isSigned, bool isFloat)
  * @return:
  *      Dst String
  * **************************************************/
-QString Hex2Dec::StrFix(QString srcStr, uint8_t dataType, bool isHex, bool isLittleEndian)
+QString Hex2Dec::StrFix(QString srcStr, e_dataType dataType, bool isHex, bool isLittleEndian)
 {
     int32_t dataLen = 0;
-    bool isSigned = true, isFloat = false;
     QString fixStr = "";
     int32_t fixLen = 0;
     QChar ch = ' ';
-    bool isNeg = false;
+    bool isNeg = false;    
+    bool isSigned = true, isFloat = true;
 
-    switch (dataType)
-    {
-    case 0: /* uint8  */ isSigned = false; /* fall-through */
-    case 1: /* sint8  */ dataLen = 1; break;
-    case 2: /* uint16 */ isSigned = false; /* fall-through */
-    case 3: /* sint16 */ dataLen = 2; break;
-    case 8: /* float  */ isFloat = true;   /* fall-through */
-    case 4: /* uint32 */ isSigned = false; /* fall-through */
-    case 5: /* sint32 */ dataLen = 4; break;
-    case 9: /* double */ isFloat = true;   /* fall-through */
-    case 6: /* uint64 */ isSigned = false; /* fall-through */
-    case 7: /* sint64 */ dataLen = 8; break;
+    switch (dataType) {
+    case DataType_U08: /* uint8  */ isSigned = false; /* fall-through */
+    case DataType_S08: /* sint8  */ dataLen = 1; break;
+    case DataType_U16: /* uint16 */ isSigned = false; /* fall-through */
+    case DataType_S16: /* sint16 */ dataLen = 2; break;
+    case DataType_U32: /* uint32 */ isSigned = false; /* fall-through */
+    case DataType_S32: /* sint32 */ isFloat = false;  /* fall-through */
+    case DataType_F32: /* float  */ dataLen = 4; break;
+    case DataType_U64: /* uint64 */ isSigned = false; /* fall-through */
+    case DataType_S64: /* sint64 */ isFloat = false;  /* fall-through */
+    case DataType_F64: /* double */ dataLen = 8; break;
     default: break;
     }
 

@@ -26,9 +26,10 @@ void FormCRCConf::on_button_templateSet_clicked()
     QString str = "";
 
     ui->spin_dataWidth->setValue(crcConf.width);
-    str.sprintf("%x", crcConf.poly);
+    str.sprintf("%X", crcConf.poly);
     ui->lineEdit_poly->setText(str);
-    str.sprintf("%x", crcConf.init);
+    str.sprintf("%X", crcConf.init);
+
     ui->lineEdit_init->setText(str);
     if (crcConf.ref_in)
         ui->radio_refIn_reverse->setChecked(true);
@@ -38,7 +39,8 @@ void FormCRCConf::on_button_templateSet_clicked()
         ui->radio_refOut_reverse->setChecked(true);
     else
         ui->radio_refOut->setChecked(true);
-    str.sprintf("%x", crcConf.xor_out);
+
+    str.sprintf("%X", crcConf.xor_out);
     ui->lineEdit_xorOut->setText(str);
 }
 
@@ -49,25 +51,31 @@ void FormCRCConf::on_button_confDone_clicked()
     do {
         m_crcConf.width = ui->spin_dataWidth->value();
 
+        if (m_crcConf.width < 8 || m_crcConf.width > 32)
+        {
+            validCode = -1;
+            break;
+        }
+
         if (m_crcConf.width <= 8)
-            m_dataType = 0; // uint8
+            m_dataType = DataType_U08; // uint8
         else if (m_crcConf.width <= 16)
-            m_dataType = 2; // uint16
+            m_dataType = DataType_U16; // uint16
         else if (m_crcConf.width <= 32)
-            m_dataType = 4; // uint32
+            m_dataType = DataType_U32; // uint32
         else
-            m_dataType = 0; // uint8
+            m_dataType = DataType_U08; // uint8
 
         m_crcConf.poly = ui->lineEdit_poly->text().toUInt(&isValid, 16);
         if (!isValid)
         {
-            validCode = -1;
+            validCode = -2;
             break;
         }
         m_crcConf.init = ui->lineEdit_init->text().toUInt(&isValid, 16);
         if (!isValid)
         {
-            validCode = -2;
+            validCode = -3;
             break;
         }
         m_crcConf.ref_in = ui->radio_refIn_reverse->isChecked();
@@ -75,7 +83,7 @@ void FormCRCConf::on_button_confDone_clicked()
         m_crcConf.xor_out = ui->lineEdit_xorOut->text().toUInt(&isValid, 16);
         if (!isValid)
         {
-            validCode = -3;
+            validCode = -4;
             break;
         }
     } while (0);
@@ -96,9 +104,9 @@ void FormCRCConf::on_button_convertPoly_clicked()
     if (isMath2Hex)
     {
         QStringList mathList = ui->lineEdit_poly_math->text().split('+');
-        foreach (QString mathStr, mathList)
+        foreach (QString mathStrItem, mathList)
         {
-            QString numStr = mathStr.mid(1);
+            QString numStr = mathStrItem.mid(1);
             order = numStr.toInt(&isValid, 10);
             if (!isValid)
             {
@@ -182,12 +190,12 @@ void FormCRCConf::on_button_convertPoly_clicked()
             return;
         }
         std::sort(orderList.rbegin(), orderList.rend());
-        foreach (order, orderList)
+        foreach (int32_t orderItem, orderList)
         {
-            if (order == 0)
-                mathStr += "x0";
+            if (orderItem == 0)
+                mathStr += "1";
             else
-                mathStr += QString("x%1").arg(order);
+                mathStr += QString("x%1").arg(orderItem);
             mathStr += '+';
         }
         mathStr.chop(1); // 移除最后一个+
@@ -208,7 +216,8 @@ void FormCRCConf::on_button_generateMeter_clicked()
         m_CRCMeterBrowser->resize(500, 400);
         QVBoxLayout *layout = new QVBoxLayout(m_CRCMeterWidget);
         layout->setContentsMargins(0, 0, 0, 0);
-        m_CRCMeterWidget->layout()->addWidget(m_CRCMeterBrowser);
+        layout->addWidget(m_CRCMeterBrowser);
+        m_CRCMeterWidget->setLayout(layout);
     }
 
     bool isValid = false;
@@ -217,11 +226,10 @@ void FormCRCConf::on_button_generateMeter_clicked()
     do {
         m_crcConf.width = ui->spin_dataWidth->value();
 
-        if (m_crcConf.width <= 8) m_dataType = 0; // uint8
-        else if (m_crcConf.width <= 16) m_dataType = 2; // uint16
-        else if (m_crcConf.width <= 24) m_dataType = 4; // uint32
-        else if (m_crcConf.width <= 32) m_dataType = 7; // uint64
-        else m_dataType = 0; // uint8
+        if (m_crcConf.width <= 8)       m_dataType = DataType_U08;
+        else if (m_crcConf.width <= 16) m_dataType = DataType_U16;
+        else if (m_crcConf.width <= 32) m_dataType = DataType_U32;
+        else m_dataType = DataType_U08;
 
         m_crcConf.poly = ui->lineEdit_poly->text().toUInt(&isValid, 16);
         if (!isValid)
@@ -235,8 +243,8 @@ void FormCRCConf::on_button_generateMeter_clicked()
             validCode = -2;
             break;
         }
-        m_crcConf.ref_in = ui->radio_refIn->isChecked();
-        m_crcConf.ref_out = ui->radio_refOut->isChecked();
+        m_crcConf.ref_in = ui->radio_refIn_reverse->isChecked();
+        m_crcConf.ref_out = ui->radio_refOut_reverse->isChecked();
         m_crcConf.xor_out = ui->lineEdit_xorOut->text().toUInt(&isValid, 16);
         if (!isValid)
         {
@@ -250,24 +258,24 @@ void FormCRCConf::on_button_generateMeter_clicked()
         str = FONT_COLOR_RED "<ERR> ";
         switch (validCode)
         {
-        case -1: str += "CRC poly"; break;
-        case -2: str += "CRC init"; break;
-        case -3: str += "CRC xorOut"; break;
+        case -1: str += "CRC位宽(仅支持8-32位)"; break;
+        case -2: str += "CRC poly"; break;
+        case -3: str += "CRC init"; break;
+        case -4: str += "CRC xorOut"; break;
         default: str += "CRC未知"; break;
         }
         str += "配置错误";
     }
     else
     {
-        uint32_t crcCalc = m_crcConf.init & ((1 << m_crcConf.width) - 1); // 初始化位init
+        uint32_t crcCalc = m_crcConf.init & ((1ULL << m_crcConf.width) - 1); // 初始化位init
         QString formatStr = "", dataTypeStr = "";
 
         switch (m_dataType)
         {
-        case 0: dataTypeStr = "uint8_t "; formatStr = "0x%02X, "; break;
-        case 1: dataTypeStr = "uint16_t "; formatStr = "0x%04X, "; break;
-        case 2: dataTypeStr = "uint32_t "; formatStr = "0x%06X, "; break;
-        case 3: dataTypeStr = "uint32_t "; formatStr = "0x%08X, "; break;
+        case DataType_U08: dataTypeStr = "uint8_t "; formatStr = "0x%02X, "; break;
+        case DataType_U16: dataTypeStr = "uint16_t "; formatStr = "0x%04X, "; break;
+        case DataType_U32: dataTypeStr = "uint32_t "; formatStr = "0x%08X, "; break;
         default: dataTypeStr = "uint8_t ";; formatStr = "0x%02X, "; break;
         }
 
@@ -277,7 +285,7 @@ void FormCRCConf::on_button_generateMeter_clicked()
         str += QString::asprintf("// * .init = 0x%X\n", m_crcConf.init);
         str += QString::asprintf("// * .ref_in = %s\n", m_crcConf.ref_in ? "true" : "false");
         str += QString::asprintf("// * .ref_out = %s\n", m_crcConf.ref_out ? "true" : "false");
-        str += QString::asprintf("// * .init = 0x%X\n", m_crcConf.init);
+        str += QString::asprintf("// * .xor_out = 0x%X\n", m_crcConf.xor_out);
         str += "// ****************************\n";
 
         str += dataTypeStr + "crcTable[256] = {\n";
@@ -314,7 +322,7 @@ void FormCRCConf::on_button_generateMeter_clicked()
         str += "}\n";
         str += dataTypeStr + "calcCRC(const t_crc_conf crcConf, const uint8_t *data, uint32_t len)\n";
         str += "{\n";
-        str += "    if (data == NULL || len == 0) return;\n";
+        str += "    if (data == NULL || len == 0) return 0;\n";
         str += "    " + dataTypeStr + "crc = crcConf.init & ((1ULL << crcConf.width) - 1);\n";
         str += "\n";
         str += "    " + dataTypeStr + "currByte = 0;\n";

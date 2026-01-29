@@ -4,6 +4,8 @@
 
 #define CONF_PATH "./conf.ini"
 
+#define SOFT_VERSION "V2.01"
+
 #define ZONE_START_HEAD (0)
 #define ZONE_END_HEAD   (g_rowCntHead - 1)
 #define ZONE_START_DATA (g_rowCntHead)
@@ -45,11 +47,20 @@ uint8_t g_dataLog_logMode = 0;
 
 bool g_isDebugMode = false;
 
+QString g_PinHZ_savePath = "";
+bool g_isSaveAsTemp = false;
+
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget)
 {
     ui->setupUi(this);
+
+    this->setWindowTitle("PinHZ_" SOFT_VERSION);
+    ui->label_softVersion->setText("Version: " SOFT_VERSION);
+    QString compileDate = __DATE__;
+    compileDate.replace(" ", "-");
+    ui->label_compileDate->setText("Compile: " + compileDate + "_" __TIME__);
 
     m_autoReplyTimes = 0;
     m_autoReplyDelay = 0;
@@ -126,7 +137,7 @@ Widget::Widget(QWidget *parent) :
     QHeaderView *colHeader = ui->table_PinHZ->horizontalHeader();
     colHeader->setSectionResizeMode(colDataType, QHeaderView::ResizeToContents);
     colHeader->setSectionResizeMode(colComment, QHeaderView::Stretch);
-    PinHZComboInit(0, 0);
+    PinHZComboInit(0, DataType_U08);
     ui->table_PinHZ->setCurrentCell(0, colDataHex);
     QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
 
@@ -384,7 +395,73 @@ int32_t Widget::PinHZDeal(QString str, uint8_t *buf)
     return dealLen;
 }
 
-void Widget::PinHZComboInit(int32_t row, uint8_t dataType)
+int32_t Widget::PinHZDeal2Table(uint8_t *buf)
+{
+    uint8_t dataLen = 0;
+    int32_t bufIndex = 0;
+    int32_t rowCnt = ui->table_PinHZ->rowCount(), comboIndex = 0;
+    e_dataType dataType = DataType_U08;
+    QTableWidgetItem *item = nullptr;
+    QWidget *widget = nullptr;
+    QComboBox *comboBox = nullptr;
+    QString str = "";
+
+    // 阻断信号，避免触发itemChanged
+    ui->table_PinHZ->blockSignals(true);
+
+    for (int32_t row = 0; row < rowCnt; row++)
+    {
+        widget = ui->table_PinHZ->cellWidget(row, colDataType);
+        comboBox = qobject_cast<QComboBox *>(widget);
+        comboIndex = comboBox->currentIndex();
+
+        dataType = (comboIndex >= 0 && comboIndex <= DataType_F64)
+                            ? static_cast<e_dataType>(comboIndex)
+                            : DataType_U08;
+        switch (dataType)
+        {
+        case DataType_U08: /* uint8 */ /* fall-through */
+        case DataType_S08: /* sint8 */ dataLen = 1; break;
+        case DataType_U16: /* uint16 */ /* fall-through */
+        case DataType_S16: /* sint16 */ dataLen = 2; break;
+        case DataType_U32: /* uint32 */ /* fall-through */
+        case DataType_S32: /* sint32 */ /* fall-through */
+        case DataType_F32: /* float  */ dataLen = 4; break;
+        case DataType_U64: /* uint64 */ /* fall-through */
+        case DataType_S64: /* sint64 */ /* fall-through */
+        case DataType_F64: /* double */ dataLen = 8; break;
+        default: break;
+        }
+        if (row == ZONE_END_DATA + 1)
+        {
+            // check type
+            switch (dataType)
+            {
+            case 0: dataLen = 0; break; // None
+            case 1: dataLen = 1; dataType = DataType_U08; break; // checkSum8
+            case 2: dataLen = 2; dataType = DataType_U16; break; // checkSum16
+            case 3: dataLen = 4; dataType = DataType_U32; break; // checkSum32
+            default: dataLen = 0; dataType = DataType_U08; break;
+            }
+        }
+        item = ui->table_PinHZ->item(row, colDataHex);
+        str = "";
+        for (int32_t i = 0; i < dataLen; i++)
+        {
+            str += QString::asprintf("%02X", buf[bufIndex++]);
+        }
+        str = m_hex2dec.StrFix(str, dataType, true, false);
+        item->setText(str);
+        str = m_hex2dec.Hex2DecString(str, dataType, g_isLittleEndian);
+        item = ui->table_PinHZ->item(row, colDataDec);
+        item->setText(str);
+    }
+    ui->table_PinHZ->blockSignals(false);
+
+    return bufIndex;
+}
+
+void Widget::PinHZComboInit(int32_t row, e_dataType dataType)
 {
     QComboBox *comboBox = new QComboBox();
 
@@ -411,24 +488,29 @@ int32_t Widget::getRowsBytes(int32_t rowStart, int32_t rowEnd)
     QWidget *widget = nullptr;
     QComboBox *comboBox = nullptr;
     int8_t dataLen = 0;
-    int32_t dataBytes = 0;
+    int32_t dataBytes = 0, comboIndex = 0;
+    e_dataType dataType = DataType_U08;
 
     for (int32_t row = rowStart; row <= rowEnd; row++)
     {
         widget = ui->table_PinHZ->cellWidget(row, colDataType);
         comboBox = qobject_cast<QComboBox *>(widget);
-        switch (comboBox->currentIndex())
+        comboIndex = comboBox->currentIndex();
+        dataType = (comboIndex >= 0 && comboIndex <= DataType_F64)
+                            ? static_cast<e_dataType>(comboIndex)
+                            : DataType_U08;
+        switch (dataType)
         {
-        case 0: /* uint8 */ /* fall-through */
-        case 1: /* sint8 */ dataLen = 1; break;
-        case 2: /* uint16 */ /* fall-through */
-        case 3: /* sint16 */ dataLen = 2; break;
-        case 8: /* float */ /* fall-through */
-        case 4: /* uint32 */ /* fall-through */
-        case 5: /* sint32 */ dataLen = 4; break;
-        case 9: /* double */ /* fall-through */
-        case 6: /* uint64 */ /* fall-through */
-        case 7: /* sint64 */ dataLen = 8; break;
+        case DataType_U08: /* uint8 */ /* fall-through */
+        case DataType_S08: /* sint8 */ dataLen = 1; break;
+        case DataType_U16: /* uint16 */ /* fall-through */
+        case DataType_S16: /* sint16 */ dataLen = 2; break;
+        case DataType_U32: /* uint32 */ /* fall-through */
+        case DataType_S32: /* sint32 */ /* fall-through */
+        case DataType_F32: /* float  */ dataLen = 4; break;
+        case DataType_U64: /* uint64 */ /* fall-through */
+        case DataType_S64: /* sint64 */ /* fall-through */
+        case DataType_F64: /* double */ dataLen = 8; break;
         default: break;
         }
         dataBytes += dataLen;
@@ -466,7 +548,7 @@ int8_t Widget::checkRowZone(int32_t row)
     return ret;
 }
 
-void Widget::createItemsARow(int32_t row, QString rowHead, uint8_t dataType, QString dataHex, QString dataDec, QString comment)
+void Widget::createItemsARow(int32_t row, QString rowHead, e_dataType dataType, QString dataHex, QString dataDec, QString comment)
 {
     // 为一行的单元格创建 Items
     QTableWidgetItem *item;
@@ -591,6 +673,53 @@ void Widget::on_serialRecv()
             {
                 m_autoReplyTimes++;
             }
+
+            if (ui->check_autoPinHZDeal->isChecked())
+            {
+                int32_t dealLen = PinHZDeal2Table(buf);
+                if (dealLen != recvLen)
+                {
+                    emit showLog(LogLevel_WAR, "自动解析到模板长度不匹配, 可能是组帧错误, 发送过快粘包或断包！");
+                }
+                QMetaObject::invokeMethod(ui->button_PinHZ, "clicked", Qt::QueuedConnection);
+
+                if (ui->check_saveAsTemp->isChecked())
+                {
+                    if (g_PinHZ_savePath.isEmpty())
+                    {
+                        emit showLog(LogLevel_WAR, "存储文件位置非法, 放弃保存!");
+                        ui->check_saveAsTemp->setChecked(false);
+                        return;
+                    }
+
+                    QFile file(g_PinHZ_savePath);
+
+                    if (!file.open(QIODevice::Append | QIODevice::Text))
+                    {
+                        emit showLog(LogLevel_WAR, "存储文件位置非法, 放弃保存!");
+                        ui->check_saveAsTemp->setChecked(false);
+                        return;
+                    }
+
+                    QTextStream txt(&file);
+                    int32_t rowCnt = ui->table_PinHZ->rowCount();
+                    QTableWidgetItem *item = nullptr;
+
+                    for (int32_t row = 0; row < rowCnt; row++)
+                    {
+                        item = ui->table_PinHZ->item(row, colDataDec);
+                        if (item->text().isEmpty())
+                            txt << "-";
+                        else
+                            txt << item->text();
+                        if (row < rowCnt - 1)
+                            txt << ",";
+                    }
+                    txt << endl;
+
+                    file.close();
+                }
+            }
         }
     }
 
@@ -604,7 +733,8 @@ void Widget::on_fillConfDone()
         emit showLog(LogLevel_ERR, "填充数据输入错误!");
         return;
     }
-    int32_t bufIndex = 0, dataType = 0, value = 0, dataLen = 0;
+    int32_t bufIndex = 0, comboIndex = 0, value = 0, dataLen = 0;
+    e_dataType dataType;
     QString str = "";
     QTableWidgetItem *item = nullptr;
     QWidget *widget = nullptr;
@@ -618,7 +748,10 @@ void Widget::on_fillConfDone()
         {
             widget = ui->table_PinHZ->cellWidget(row, colDataType);
             comboBox = qobject_cast<QComboBox *>(widget);
-            dataType = comboBox->currentIndex();
+            comboIndex = comboBox->currentIndex();
+            dataType = (comboIndex >= 0 && comboIndex <= DataType_F64)
+                                ? static_cast<e_dataType>(comboIndex)
+                                : DataType_U08;
 
             item = ui->table_PinHZ->item(row, colDataHex);
             if (m_fillItemDlg->m_fillStatus == 1) // 顺序填充
@@ -627,16 +760,16 @@ void Widget::on_fillConfDone()
             {
                 switch (dataType)
                 {
-                case 0: /* uint8 */ /* fall-through */
-                case 1: /* sint8 */ dataLen = 1; break;
-                case 2: /* uint16 */ /* fall-through */
-                case 3: /* sint16 */ dataLen = 2; break;
-                case 4: /* uint32 */ /* fall-through */
-                case 5: /* sint32 */ /* fall-through */
-                case 8: /* float  */ dataLen = 4; break;
-                case 6: /* uint64 */ /* fall-through */
-                case 7: /* sint64 */ /* fall-through */
-                case 9: /* double */ dataLen = 8; break;
+                case DataType_U08: /* uint8 */ /* fall-through */
+                case DataType_S08: /* sint8 */ dataLen = 1; break;
+                case DataType_U16: /* uint16 */ /* fall-through */
+                case DataType_S16: /* sint16 */ dataLen = 2; break;
+                case DataType_U32: /* uint32 */ /* fall-through */
+                case DataType_S32: /* sint32 */ /* fall-through */
+                case DataType_F32: /* float  */ dataLen = 4; break;
+                case DataType_U64: /* uint64 */ /* fall-through */
+                case DataType_S64: /* sint64 */ /* fall-through */
+                case DataType_F64: /* double */ dataLen = 8; break;
                 default: break;
                 }
                 memcpy(&value, pFillBuf + bufIndex, dataLen);
@@ -774,19 +907,41 @@ void Widget::on_button_clearLog_clicked()
 
 void Widget::on_button_picSelect_clicked()
 {
-    QString srcPath, dstPath;
-    // 注意, 直接使用QFileDialog是模态的, 会阻塞主线程
-    srcPath = QFileDialog::getOpenFileName(this, tr("选择源文件"), "", "");
-    dstPath = QFileDialog::getSaveFileName(this, tr("选择保存位置"), "dst.ico", ".ico");
+    QString srcPath = QFileDialog::getOpenFileName(this, tr("选择源文件"),
+                                                   "", tr("Images (*.png *.jpg *.bmp *.jpeg *.gif)"));
+    if (srcPath.isEmpty())
+    {
+        emit showLog(LogLevel_ERR, "转换取消：未选择源文件");
+        return;
+    }
+    if (!QFile::exists(srcPath))
+    {
+        emit showLog(LogLevel_ERR, QString("转换失败：源文件不存在:%1").arg(srcPath));
+        return;
+    }
+
+    QString dstPath = QFileDialog::getSaveFileName(this, tr("选择保存位置"),
+                                                   "dst.ico", tr("ICO文件 (*.ico)"));
+    if (dstPath.isEmpty())
+    {
+        emit showLog(LogLevel_ERR, "转换取消：未选择保存位置");
+        return;
+    }
+
     QImage img(srcPath);
+    if (img.isNull())
+    {
+        emit showLog(LogLevel_ERR,
+                     QString("转换失败：源文件无法读取(非有效图片/文件损坏):" FONT_COLOR_DARK_ORANGE "%1").arg(srcPath));
+        return;
+    }
+
     if (img.save(dstPath, "ICO"))
-    {
-        emit showLog(LogLevel_INF, "转换成功");
-    }
+        emit showLog(LogLevel_INF,
+                     QString("转换成功：保存至:" FONT_COLOR_DARK_ORANGE "%1").arg(dstPath));
     else
-    {
-        emit showLog(LogLevel_ERR, "转换失败");
-    }
+        emit showLog(LogLevel_ERR,
+                     QString("转换失败：(路径无权限/磁盘满)无法保存至:" FONT_COLOR_DARK_ORANGE "%1").arg(dstPath));
 }
 
 void Widget::on_button_addHead_clicked()
@@ -801,7 +956,7 @@ void Widget::on_button_addHead_clicked()
         curRow = zoneEnd + 1;
 
     ui->table_PinHZ->insertRow(curRow);                    // 插入一行，但不会自动为单元格创建item
-    createItemsARow(curRow, "Head", 0, "00", "0", "Head"); // 为某一行创建items
+    createItemsARow(curRow, "Head", DataType_U08, "00", "0", "Head"); // 为某一行创建items
     g_rowCntHead++;
 }
 
@@ -821,7 +976,7 @@ void Widget::on_button_addItem_clicked()
             curRow = zoneEnd + 1;
 
         ui->table_PinHZ->insertRow(curRow);                // 插入一行，但不会自动为单元格创建item
-        createItemsARow(curRow, "Data", 0, "00", "0", ""); // 为某一行创建items
+        createItemsARow(curRow, "Data", DataType_U08, "00", "0", ""); // 为某一行创建items
         g_rowCntData++;
         zoneEnd = ZONE_END_DATA;
         updateDataZoneBytes();
@@ -903,7 +1058,7 @@ void Widget::on_button_addTail_clicked()
         curRow = zoneEnd + 1;
 
     ui->table_PinHZ->insertRow(curRow);                    // 插入一行，但不会自动为单元格创建item
-    createItemsARow(curRow, "Tail", 0, "00", "0", "Tail"); // 为某一行创建items
+    createItemsARow(curRow, "Tail", DataType_U08, "00", "0", "Tail"); // 为某一行创建items
     g_rowCntTail++;
 }
 
@@ -941,7 +1096,7 @@ void Widget::on_button_copyCurRow_clicked()
     QTableWidgetItem *item = nullptr;
     QWidget *widget = nullptr;
     QComboBox *comboBox = nullptr;
-    uint8_t curDataType = 0;
+    e_dataType curDataType = DataType_U08;
     int32_t pasteRow = rows.last() + 1;
     int8_t rowZone = 0;
 
@@ -960,17 +1115,17 @@ void Widget::on_button_copyCurRow_clicked()
         item = ui->table_PinHZ->item(row, colComment); // Comment
         colStrList << item->text();
 
-        if (colStrList[1] == "uint8") curDataType = 0;
-        else if (colStrList[1] == "int8") curDataType = 1;
-        else if (colStrList[1] == "uint16") curDataType = 2;
-        else if (colStrList[1] == "int16") curDataType = 3;
-        else if (colStrList[1] == "uint32") curDataType = 4;
-        else if (colStrList[1] == "int32") curDataType = 5;
-        else if (colStrList[1] == "uint64") curDataType = 6;
-        else if (colStrList[1] == "int64") curDataType = 7;
-        else if (colStrList[1] == "float") curDataType = 8;
-        else if (colStrList[1] == "double") curDataType = 9;
-        else { ; }
+        if (colStrList[1] == "uint8")       curDataType = DataType_U08;
+        else if (colStrList[1] == "int8")   curDataType = DataType_S08;
+        else if (colStrList[1] == "uint16") curDataType = DataType_U16;
+        else if (colStrList[1] == "int16")  curDataType = DataType_S16;
+        else if (colStrList[1] == "uint32") curDataType = DataType_U32;
+        else if (colStrList[1] == "int32")  curDataType = DataType_S32;
+        else if (colStrList[1] == "uint64") curDataType = DataType_U64;
+        else if (colStrList[1] == "int64")  curDataType = DataType_S64;
+        else if (colStrList[1] == "float")  curDataType = DataType_F32;
+        else if (colStrList[1] == "double") curDataType = DataType_F64;
+        else curDataType = DataType_U08;
 
         ui->table_PinHZ->insertRow(pasteRow); // 插入一行，但不会自动为单元格创建item
         createItemsARow(pasteRow, colStrList[0], curDataType, colStrList[2], colStrList[3], colStrList[4]); // 为某一行创建items
@@ -1166,8 +1321,7 @@ void Widget::on_button_PinHZSave_clicked()
     }
     file.close();
 
-    filePath = FONT_COLOR_BLUE + filePath;
-    emit showLog(LogLevel_INF, "frmLayout存储完成, 文件保存于:" + filePath);
+    emit showLog(LogLevel_INF, "frmLayout存储完成, 文件保存于:" FONT_COLOR_DARK_ORANGE + filePath);
 }
 
 void Widget::on_button_PinHZLoad_clicked()
@@ -1195,8 +1349,8 @@ void Widget::on_button_PinHZLoad_clicked()
     QTextStream txt(&file);
     QString rowStr = "";
     QStringList colStrList;
-    int32_t colNum;
-    uint8_t curDataType;
+    int32_t colNum = 0;
+    e_dataType curDataType = DataType_U08;
 
     if (txt.atEnd())
     {
@@ -1236,11 +1390,11 @@ void Widget::on_button_PinHZLoad_clicked()
         }
         if (colStrList[0] == "Check")
         {
-            if (colStrList[1] == "None") curDataType = 0;
-            else if (colStrList[1] == "CheckSum-8") curDataType = 1;
-            else if (colStrList[1] == "CheckSum-16") curDataType = 2;
-            else if (colStrList[1] == "CheckSum-32") curDataType = 3;
-            else if (colStrList[1] == "CRC") curDataType = 4;
+            if (colStrList[1] == "None")                curDataType = DataType_U08;
+            else if (colStrList[1] == "CheckSum-8")     curDataType = DataType_U08;
+            else if (colStrList[1] == "CheckSum-16")    curDataType = DataType_U16;
+            else if (colStrList[1] == "CheckSum-32")    curDataType = DataType_U32;
+            else if (colStrList[1] == "CRC")            curDataType = DataType_U32;
             else
             {
                 file.close();
@@ -1267,22 +1421,23 @@ void Widget::on_button_PinHZLoad_clicked()
                 emit showLog(LogLevel_ERR, QString::asprintf("模板读取失败, %d行头错误:", row) + rowStr);
             }
 
-            if (colStrList[1] == "uint8") curDataType = 0;
-            else if (colStrList[1] == "int8") curDataType = 1;
-            else if (colStrList[1] == "uint16") curDataType = 2;
-            else if (colStrList[1] == "int16") curDataType = 3;
-            else if (colStrList[1] == "uint32") curDataType = 4;
-            else if (colStrList[1] == "int32") curDataType = 5;
-            else if (colStrList[1] == "uint64") curDataType = 6;
-            else if (colStrList[1] == "int64") curDataType = 7;
-            else if (colStrList[1] == "float") curDataType = 8;
-            else if (colStrList[1] == "double") curDataType = 9;
+            if (colStrList[1] == "uint8")       curDataType = DataType_U08;
+            else if (colStrList[1] == "int8")   curDataType = DataType_S08;
+            else if (colStrList[1] == "uint16") curDataType = DataType_U16;
+            else if (colStrList[1] == "int16")  curDataType = DataType_S16;
+            else if (colStrList[1] == "uint32") curDataType = DataType_U32;
+            else if (colStrList[1] == "int32")  curDataType = DataType_S32;
+            else if (colStrList[1] == "uint64") curDataType = DataType_U64;
+            else if (colStrList[1] == "int64")  curDataType = DataType_S64;
+            else if (colStrList[1] == "float")  curDataType = DataType_F32;
+            else if (colStrList[1] == "double") curDataType = DataType_F64;
             else
             {
                 file.close();
                 emit showLog(LogLevel_ERR, QString::asprintf("模板读取失败, %d行数据类型错误:", row) + rowStr);
                 return;
             }
+
             colStrList[2] = m_hex2dec.StrFix(colStrList[2], curDataType, true, false);
             colStrList[3] = m_hex2dec.StrFix(colStrList[3], curDataType, false, false);
 
@@ -1312,66 +1467,15 @@ void Widget::on_button_PinHZSend_clicked()
         netSend(txBuf, txLen);
 }
 
-void Widget::on_button_PinHZReverse_clicked()
+void Widget::on_button_PinHZDeal_clicked()
 {
     QString str = ui->plain_PinHZ->toPlainText();
-    uint8_t buf[PINHZ_CACHE_LEN] = {0, }, dataLen = 0;
+    uint8_t buf[PINHZ_CACHE_LEN] = {0, };
     int32_t bufLen = 0, bufIndex = 0;
-    int32_t rowCnt = ui->table_PinHZ->rowCount(), dataType = 0;
-    QTableWidgetItem *item = nullptr;
-    QWidget *widget = nullptr;
-    QComboBox *comboBox = nullptr;
 
     bufLen = PinHZDeal(str, buf);
+    bufIndex = PinHZDeal2Table(buf);
 
-    // 阻断信号，避免触发itemChanged
-    ui->table_PinHZ->blockSignals(true);
-
-    for (int32_t row = 0; row < rowCnt; row++)
-    {
-        widget = ui->table_PinHZ->cellWidget(row, colDataType);
-        comboBox = qobject_cast<QComboBox *>(widget);
-        dataType = comboBox->currentIndex();
-
-        switch (dataType)
-        {
-        case 0: /* uint8 */ /* fall-through */
-        case 1: /* sint8 */ dataLen = 1; break;
-        case 2: /* uint16 */ /* fall-through */
-        case 3: /* sint16 */ dataLen = 2; break;
-        case 4: /* uint32 */ /* fall-through */
-        case 5: /* sint32 */ /* fall-through */
-        case 8: /* float  */ dataLen = 4; break;
-        case 6: /* uint64 */ /* fall-through */
-        case 7: /* sint64 */ /* fall-through */
-        case 9: /* double */ dataLen = 8; break;
-        default: break;
-        }
-        if (row == ZONE_END_DATA + 1)
-        {
-            // check
-            switch (dataType)
-            {
-            case 0: dataLen = 0; break; // None
-            case 1: dataLen = 1; dataType = 0; break; // checkSum8
-            case 2: dataLen = 2; dataType = 1; break; // checkSum16
-            case 3: dataLen = 4; dataType = 2; break; // checkSum32
-            default: dataLen = 0; dataType = 0; break;
-            }
-        }
-        item = ui->table_PinHZ->item(row, colDataHex);
-        str = "";
-        for (int32_t i = 0; i < dataLen; i++)
-        {
-            str += QString::asprintf("%02X", buf[bufIndex++]);
-        }
-        str = m_hex2dec.StrFix(str, dataType, true, false);
-        item->setText(str);
-        str = m_hex2dec.Hex2DecString(str, dataType, g_isLittleEndian);
-        item = ui->table_PinHZ->item(row, colDataDec);
-        item->setText(str);
-    }
-    ui->table_PinHZ->blockSignals(false);
     if (bufIndex != bufLen)
     {
         str = QString::asprintf("模板不匹配, 模板:%dBytes, 数据:%dBytes", bufIndex, bufLen);
@@ -1448,16 +1552,20 @@ void Widget::on_combo_PinHZ_dataTypeChanged(int index)
     // 阻断信号，避免触发itemChanged
     ui->table_PinHZ->blockSignals(true);
 
+    e_dataType dataType = (index >= 0 && index <= DataType_F64)
+                        ? static_cast<e_dataType>(index)
+                        : DataType_U08;
+
     QTableWidgetItem *item = ui->table_PinHZ->item(row, colDataHex);
     QString str = item->text();
     if (str.isEmpty())
         return;
     if (g_isLittleEndian)
         m_hex2dec.HexStrTurnOrder(str);
-    QString fixStr = m_hex2dec.StrFix(str, index, true, g_isLittleEndian);
+    QString fixStr = m_hex2dec.StrFix(str, dataType, true, g_isLittleEndian);
     item->setText(fixStr);
     str = m_hex2dec.Hex2DecString(fixStr,
-                                  comboBox->currentIndex(),
+                                  dataType,
                                   g_isLittleEndian);
     item = ui->table_PinHZ->item(row, colDataDec);
     item->setText(str);
@@ -1479,7 +1587,7 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
         return;
     }
     int32_t dataZoneStart = ZONE_START_DATA, dataZoneEnd = ZONE_END_DATA;
-    int32_t dataType = 0;
+    e_dataType dataType = DataType_U08;
     QTableWidgetItem *item = nullptr;
     uint8_t checkBuf[2048] = {0, };
     uint32_t checkCalc = 0;
@@ -1533,7 +1641,13 @@ void Widget::on_combo_PinHZ_checkChanged(int index)
             }
 
             checkStr = QString::number(checkCalc);
-            dataType = m_checkType - 1;
+            switch (m_checkType) {
+            case 0: dataType = DataType_U08; break; // None
+            case 1: dataType = DataType_U08; break; // CheckSum8
+            case 2: dataType = DataType_U16; break; // CheckSum16
+            case 3: dataType = DataType_U32; break; // CheckSum32
+            default: dataType = DataType_U08; break;
+            }
             if (m_crcConfDlg->isVisible())
             {
                 m_crcConfDlg->close();
@@ -1610,16 +1724,16 @@ void Widget::on_combo_hexOrder_currentIndexChanged(int index)
         byteStrLen = comboBox->currentIndex();
         switch (byteStrLen)
         {
-        case 0: /* uint8  */ /* fall-through */
-        case 1: /* int8   */ byteStrLen = 1 * 2; break;
-        case 2: /* uint16 */ /* fall-through */
-        case 3: /* int16  */ byteStrLen = 2 * 2; break;
-        case 4: /* uint32 */ /* fall-through */
-        case 5: /* int32  */ /* fall-through */
-        case 8: /* float  */ byteStrLen = 4 * 2; break;
-        case 6: /* uint64 */ /* fall-through */
-        case 7: /* int64  */ /* fall-through */
-        case 9: /* double */ byteStrLen = 8 * 2; break;
+        case DataType_U08: /* uint8  */ /* fall-through */
+        case DataType_S08: /* int8   */ byteStrLen = 1 * 2; break;
+        case DataType_U16: /* uint16 */ /* fall-through */
+        case DataType_S16: /* int16  */ byteStrLen = 2 * 2; break;
+        case DataType_U32: /* uint32 */ /* fall-through */
+        case DataType_S32: /* int32  */ /* fall-through */
+        case DataType_F32: /* float  */ byteStrLen = 4 * 2; break;
+        case DataType_U64: /* uint64 */ /* fall-through */
+        case DataType_S64: /* int64  */ /* fall-through */
+        case DataType_F64: /* double */ byteStrLen = 8 * 2; break;
         default: break;
         }
 
@@ -1643,7 +1757,10 @@ void Widget::on_table_PinHZ_itemChanged(QTableWidgetItem *item)
     QWidget *widget = ui->table_PinHZ->cellWidget(row, colDataType);
     QComboBox *comboBox = qobject_cast<QComboBox *>(widget);
     QString str = item->text();
-
+    int32_t comboIndex = comboBox->currentIndex();
+    e_dataType dataType = (comboIndex >= 0 && comboIndex <= DataType_F64)
+                                ? static_cast<e_dataType>(comboIndex)
+                                : DataType_U08;
     if (str.isEmpty())
         str = "0";
     QString fixStr = "";
@@ -1661,12 +1778,12 @@ void Widget::on_table_PinHZ_itemChanged(QTableWidgetItem *item)
         // 所以又输入了90EB，同时使用的是大写字母输入，那这个item就和输入前一模一样，也就无法触发当前槽函数
         // 所以先修改成别的内容，再输入90EB，或者用小写输入90eb，都可以进行正常流程
         // 原生tabwidget不支持editdone，目前最合理的修改的逻辑是重写tableWidget类，手动控制事件
-        fixStr = m_hex2dec.StrFix(str, comboBox->currentIndex(), true, false);
-        fixStr = m_hex2dec.StrFix(fixStr, comboBox->currentIndex(), true, g_isLittleEndian);
+        fixStr = m_hex2dec.StrFix(str, dataType, true, false);
+        fixStr = m_hex2dec.StrFix(fixStr, dataType, true, g_isLittleEndian);
         item->setText(fixStr);
         str = m_hex2dec.Hex2DecString(fixStr,
-                                        comboBox->currentIndex(),
-                                        g_isLittleEndian);
+                                      dataType,
+                                      g_isLittleEndian);
         item = ui->table_PinHZ->item(row, colDataDec);
         item->setText(str);
         break;
@@ -1674,12 +1791,12 @@ void Widget::on_table_PinHZ_itemChanged(QTableWidgetItem *item)
     case colDataDec:
     {
         fixStr = m_hex2dec.StrFix(str,
-                                    comboBox->currentIndex(), false,
-                                    g_isLittleEndian);
+                                  dataType, false,
+                                  g_isLittleEndian);
         item->setText(fixStr);
         str = m_hex2dec.Dec2HexString(fixStr,
-                                        comboBox->currentIndex(),
-                                        g_isLittleEndian);
+                                      dataType,
+                                      g_isLittleEndian);
         item = ui->table_PinHZ->item(row, colDataHex);
         item->setText(str);
     }
@@ -2455,11 +2572,55 @@ void Widget::on_check_saveAsTemp_toggled(bool checked)
 {
     if (checked)
     {
+        QString filePath = QFileDialog::getSaveFileName(this,
+                                                tr("请选择或输入你要存储的文件名"),
+                                                "PinHZ_SaveAs_",
+                                                tr("逗号分隔文件(*.csv)"));
+        if (filePath.isEmpty())
+        {
+            emit showLog(LogLevel_WAR, "取消选择存储位置, 放弃保存!");
+            // 核心：临时阻塞信号，修改状态不触发递归
+            ui->check_saveAsTemp->blockSignals(true);
+            ui->check_saveAsTemp->setChecked(false);
+            ui->check_saveAsTemp->blockSignals(false);
+            return;
+        }
 
+        QFile file(filePath);
+
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            emit showLog(LogLevel_WAR, "存储文件位置非法, 放弃保存!");
+            ui->check_saveAsTemp->blockSignals(true);
+            ui->check_saveAsTemp->setChecked(false);
+            ui->check_saveAsTemp->blockSignals(false);
+            return;
+        }
+
+        QTextStream txt(&file);
+        int32_t rowCnt = ui->table_PinHZ->rowCount();
+        QTableWidgetItem *item = nullptr;
+
+        for (int32_t row = 0; row < rowCnt; row++)
+        {
+            item = ui->table_PinHZ->item(row, colComment);
+            if (item->text().isEmpty())
+                txt << "-";
+            else
+                txt << item->text();
+            if (row < rowCnt - 1)
+                txt << ",";
+        }
+        txt << endl;
+        file.close();
+
+        g_PinHZ_savePath = filePath;
+        emit showLog(LogLevel_INF, "初始化文件成功, 保存至:" FONT_COLOR_DARK_ORANGE + filePath);
     }
     else
     {
-
+        emit showLog(LogLevel_INF, "停止保存文件至:" FONT_COLOR_DARK_ORANGE + g_PinHZ_savePath);
+        g_PinHZ_savePath = "";
     }
 }
 
