@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormCheckTools</class>
+ <widget class="QDialog" name="FormCheckTools">
+  <property name="windowTitle">
+   <string>数据 / 文件校验</string>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>780</width>
+    <height>680</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <item>
+    <widget class="QTabWidget" name="tab_check">
+     <widget class="QWidget" name="page_dataCheck">
+      <attribute name="title">
+       <string>数据校验</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="layout_dataCheck">
+       <item>
+        <widget class="FormDataCheck" name="dataCheck" />
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="page_fileCheck">
+      <attribute name="title">
+       <string>文件校验</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="layout_fileCheck">
+       <item>
+        <widget class="FormFileCheck" name="fileCheck" />
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FormDataCheck</class>
+   <extends>QWidget</extends>
+   <header>FormDataCheck.h</header>
+  </customwidget>
+  <customwidget>
+   <class>FormFileCheck</class>
+   <extends>QWidget</extends>
+   <header>FormFileCheck.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources />
+ <connections />
+</ui>

@@ -1,0 +1,305 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormCheckPanel</class>
+ <widget class="QWidget" name="FormCheckPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>700</width>
+    <height>280</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="optionsLayout">
+     <item>
+      <widget class="QLabel" name="label_type">
+       <property name="text">
+        <string>校验类型</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="combo_dataCheckType">
+       <property name="maxVisibleItems">
+        <number>12</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>累加和 / 8 位</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>累加和 / 16 位</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>累加和 / 32 位</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>CRC（预设 / 自定义）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA-224</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA-256</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA-384</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA-512</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>MD5</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA-1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>MD4（兼容旧格式）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA3-224</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA3-256</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA3-384</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SHA3-512</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Adler-32</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>XOR-8 / BCC</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>BLAKE2sp-256（WinRAR）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>BLAKE2s-256</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>BLAKE2b-512</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>xxHash-32</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>xxHash-64</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>XXH3-64</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>XXH3-128</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>CRC-64/ECMA-182</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>CRC-64/XZ</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>LRC-8（Modbus ASCII）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Fletcher-16</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Internet Checksum-16</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_crcConf">
+       <property name="text">
+        <string>CRC 配置</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="optionsSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_endian">
+       <property name="text">
+        <string>结果字节序</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="combo_dataCheckEndian">
+       <item>
+        <property name="text">
+         <string>大端</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>小端</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_crcInfo">
+     <property name="text">
+      <string>CRC 参数</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_algorithmHint">
+     <property name="text">
+      <string>累加和按字节相加并保留低 8/16/32 位；SHA2 按标准摘要顺序输出。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="resultLabelLayout">
+     <item>
+      <widget class="QLabel" name="label_result">
+       <property name="text">
+        <string>校验结果（HEX 字节）</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="resultSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_copyResult">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>复制结果</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="plain_dataCheckResult">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_dataCheckStatus">
+     <property name="text">
+      <string>请选择参数后计算校验。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources />
+ <connections />
+</ui>

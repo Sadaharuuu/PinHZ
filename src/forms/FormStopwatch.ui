@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormStopwatch</class>
+ <widget class="QDialog" name="FormStopwatch">
+  <property name="windowTitle">
+   <string>秒表</string>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>520</width>
+    <height>650</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <item>
+    <widget class="FormStopwatchDial" name="dial_stopwatch">
+     <property name="maximumHeight">
+      <number>300</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_elapsed">
+     <property name="font">
+      <font>
+       <pointsize>30</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="text">
+      <string>00:00:00.000</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="actions">
+     <item>
+      <widget class="QPushButton" name="button_start">
+       <property name="text">
+        <string>开始</string>
+       </property>
+       <property name="toolTip">
+        <string>关闭窗口后继续计时</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_lap">
+       <property name="text">
+        <string>分段</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_reset">
+       <property name="text">
+        <string>复位</string>
+       </property>
+       <property name="toolTip">
+        <string>停止计时并清空分段</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_copy">
+       <property name="text">
+        <string>复制</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QListWidget" name="list_laps" />
+   </item>
+  </layout>
+ </widget>
+ <resources />
+ <connections />
+ <customwidgets>
+  <customwidget>
+   <class>FormStopwatchDial</class>
+   <extends>QWidget</extends>
+   <header>FormStopwatchDial.h</header>
+  </customwidget>
+ </customwidgets>
+</ui>

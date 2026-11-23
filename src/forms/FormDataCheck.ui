@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormDataCheck</class>
+ <widget class="QDialog" name="FormDataCheck">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>720</width>
+    <height>540</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>数据校验</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="2,3,0">
+   <item>
+    <widget class="QPlainTextEdit" name="plain_dataCheckInput">
+     <property name="placeholderText">
+      <string>AA 55 11 22 33</string>
+     </property>
+     <property name="toolTip">
+      <string>支持连续 HEX 或用空白分隔，每组须为偶数位。</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="FormCheckPanel" name="checkPanel" native="true" />
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <item>
+      <widget class="QPushButton" name="button_calculateCheck">
+       <property name="text">
+        <string>计算校验</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_clear">
+       <property name="text">
+        <string>清空</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="buttonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_close">
+       <property name="text">
+        <string>关闭</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FormCheckPanel</class>
+   <extends>QWidget</extends>
+   <header>FormCheckPanel.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources />
+ <connections />
+</ui>

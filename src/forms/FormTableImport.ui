@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormTableImport</class>
+ <widget class="QDialog" name="FormTableImport">
+  <property name="windowTitle">
+   <string>从表格导入</string>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>900</width>
+    <height>720</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>8</number>
+   </property>
+   <property name="topMargin">
+    <number>8</number>
+   </property>
+   <property name="rightMargin">
+    <number>8</number>
+   </property>
+   <property name="bottomMargin">
+    <number>8</number>
+   </property>
+   <item>
+    <widget class="TablePasteEdit" name="edit_source">
+     <property name="placeholderText">
+      <string>粘贴 Word / Excel 表格，或输入 Markdown：
+
+| 字段说明 | 数据类型 |
+| --- | --- |
+| 长度 | uint16 |
+| 温度 | float |</string>
+     </property>
+     <property name="toolTip">
+      <string>导入项追加到数据域，初始值默认 0，可在预览里修改。</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="actions">
+     <item>
+      <widget class="QCheckBox" name="check_header">
+       <property name="text">
+        <string>首行为表头</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_paste">
+       <property name="text">
+        <string>粘贴表格</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_parse">
+       <property name="text">
+        <string>解析并预览</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QFormLayout" name="mapping">
+     <item row="1" column="0">
+      <widget class="QLabel" name="typeLabel">
+       <property name="text">
+        <string>数据类型列（必选）</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="mapType" />
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="commentLabel">
+       <property name="text">
+        <string>字段说明列</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QComboBox" name="mapComment" />
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="table_preview">
+     <property name="editTriggers">
+      <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::AnyKeyPressed</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_status">
+     <property name="text">
+      <string />
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttons">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TablePasteEdit</class>
+   <extends>QTextEdit</extends>
+   <header>FormTableImport.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources />
+ <connections />
+</ui>

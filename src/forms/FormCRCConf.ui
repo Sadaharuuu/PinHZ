@@ -1,0 +1,639 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormCRCConf</class>
+ <widget class="QWidget" name="FormCRCConf">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>480</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>CRC设置</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../../res/resources.qrc">
+    <normaloff>:/pic/Sadaharu.png</normaloff>:/pic/Sadaharu.png</iconset>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>8</number>
+   </property>
+   <property name="topMargin">
+    <number>8</number>
+   </property>
+   <property name="rightMargin">
+    <number>8</number>
+   </property>
+   <property name="bottomMargin">
+    <number>8</number>
+   </property>
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tab">
+      <attribute name="title">
+       <string>参数设置</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="label">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>数据位宽(DataWidth)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="spin_dataWidth">
+           <property name="minimum">
+            <number>4</number>
+           </property>
+           <property name="maximum">
+            <number>32</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>多项式(Poly)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEdit_poly" />
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <item>
+          <widget class="QLabel" name="label_3">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>初态(Init)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEdit_init" />
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QLabel" name="label_4">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>输入方向(RefIn)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <item>
+            <widget class="QRadioButton" name="radio_refIn_reverse">
+             <property name="text">
+              <string>反转</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radio_refIn">
+             <property name="text">
+              <string>不反转</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <item>
+          <widget class="QLabel" name="label_5">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>输出方向(RefOut)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <item>
+            <widget class="QRadioButton" name="radio_refOut_reverse">
+             <property name="text">
+              <string>反转</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup_2</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radio_refOut">
+             <property name="text">
+              <string>不反转</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">buttonGroup_2</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>异或输出(XorOut)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEdit_xorOut" />
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="7,0">
+         <item>
+          <widget class="QComboBox" name="combo_template">
+           <property name="currentIndex">
+            <number>6</number>
+           </property>
+           <item>
+            <property name="text">
+             <string>CRC-4 / ITU</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-5 / EPC</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-5 / ITU</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-5 / USB</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-6 / ITU</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-7 / MMC</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-8 / SMBUS</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-8 / ITU</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-8 / ROHC</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-8 / MAXIM</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / IBM</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / MAXIM</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / USB</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / MODBUS</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / CCITT</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / CCITT-FALSE</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / X25</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / XMODEM</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / DNP</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-24 / LTE-A</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-32 / ISO-HDLC（IEEE）</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-32 / MPEG2</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-32C / Castagnoli</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-24 / OPENPGP</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-16 / GENIBUS</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-8 / SAE-J1850</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>CRC-32 / BZIP2</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="button_templateSet">
+           <property name="text">
+            <string>应用模板</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_15">
+         <item>
+          <widget class="QPushButton" name="button_generateMeter">
+           <property name="text">
+            <string>生成CRC表</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="button_confDone">
+           <property name="text">
+            <string>设置完成</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>多项式转换</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_11">
+         <item>
+          <widget class="QLabel" name="label_7">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>数学表达式(x4+x2+x0)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEdit_poly_math" />
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_10">
+         <item>
+          <widget class="QLabel" name="label_9">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>最大阶数</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="spin_maxOrder">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_12">
+         <item>
+          <widget class="QLabel" name="label_10">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>十六进制表达式</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEdit_poly_hex" />
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_14">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <item>
+          <widget class="QRadioButton" name="radio_poly_simple">
+           <property name="text">
+            <string>简写多项式(省略最高位)</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">buttonGroup_3</string>
+           </attribute>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="radio_poly_whole">
+           <property name="text">
+            <string>完整表达式</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">buttonGroup_3</string>
+           </attribute>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_13">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <item>
+          <widget class="QRadioButton" name="radio_math2hex">
+           <property name="text">
+            <string>数学表达式转Hex</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">buttonGroup_4</string>
+           </attribute>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="radio_hex2math">
+           <property name="text">
+            <string>Hex转数学表达式</string>
+           </property>
+           <attribute name="buttonGroup">
+            <string notr="true">buttonGroup_4</string>
+           </attribute>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QPushButton" name="button_convertPoly">
+         <property name="text">
+          <string>转换</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_2">
+      <attribute name="title">
+       <string>说明</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <property name="leftMargin">
+        <number>8</number>
+       </property>
+       <property name="topMargin">
+        <number>8</number>
+       </property>
+       <property name="rightMargin">
+        <number>8</number>
+       </property>
+       <property name="bottomMargin">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QTextBrowser" name="textBrowser">
+         <property name="html">
+          <string>&lt;html&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;CRC 参数&lt;/b&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;位宽：支持 4–32 位，包括非整字节位宽。&lt;/li&gt;&lt;li&gt;Poly：常规多项式，省略最高阶项；例如 CRC-16/MODBUS 输入 8005，而非反转后的 A001。无需将多项式限制为不可约多项式。&lt;/li&gt;&lt;li&gt;Init：未处理数据前的寄存器初值。&lt;/li&gt;&lt;li&gt;RefIn：按位反转每个输入字节。&lt;/li&gt;&lt;li&gt;RefOut：在最终异或前，按 CRC 的完整位宽反转寄存器。&lt;/li&gt;&lt;li&gt;XorOut：最终异或值。Poly、Init、XorOut 均按十六进制输入，不得超出位宽。&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;RefIn / RefOut 与发送时的字节大小端是不同设置。旧 CRC24 预设为 LTE-A（Init=0），OpenPGP 使用 Init=B704CE。&lt;/p&gt;&lt;p&gt;&lt;b&gt;多项式转换&lt;/b&gt;&lt;/p&gt;&lt;p&gt;支持 x16+x12+x5+1、x^16+x^12+x^5+1，常数项也可写 x0。最大阶数为 1–32；简写省略最高阶项，完整写法保留最高阶项。&lt;/p&gt;&lt;p&gt;&lt;b&gt;生成查表代码&lt;/b&gt;&lt;/p&gt;&lt;p&gt;生成完整的 C99 表和函数。表与函数固定当前参数，修改参数后需整套重新生成。支持空数据，返回数值 CRC；字节大小端由调用方处理。分块累计不能直接复用已执行 RefOut / XorOut 的结果作为下一块初值。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_configStatus">
+     <property name="text">
+      <string />
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="../../res/resources.qrc" />
+ </resources>
+ <connections />
+ <buttongroups>
+  <buttongroup name="buttonGroup_3" />
+  <buttongroup name="buttonGroup" />
+  <buttongroup name="buttonGroup_2" />
+  <buttongroup name="buttonGroup_4" />
+ </buttongroups>
+</ui>

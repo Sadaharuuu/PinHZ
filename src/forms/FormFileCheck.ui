@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>FormFileCheck</class>
+ <widget class="QDialog" name="FormFileCheck">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>760</width>
+    <height>680</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>文件校验</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
+   <item>
+    <widget class="FormFileRange" name="fileRange" native="true">
+     <property name="toolTip">
+      <string>校验所选范围的文件原始字节。</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="FormCheckPanel" name="checkPanel" native="true" />
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <item>
+      <widget class="QPushButton" name="button_calculateCheck">
+       <property name="text">
+        <string>计算校验</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="buttonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_close">
+       <property name="text">
+        <string>关闭</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FormFileRange</class>
+   <extends>QWidget</extends>
+   <header>FormFileRange.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormCheckPanel</class>
+   <extends>QWidget</extends>
+   <header>FormCheckPanel.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources />
+ <connections />
+</ui>

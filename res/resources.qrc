@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/">
+        <file>pic/BuildWithQt.png</file>
+        <file>pic/Sadaharu.png</file>
+        <file>themes/common.qss</file>
+        <file>themes/blueprint.json</file>
+        <file>themes/graphite.json</file>
+        <file>themes/warm.json</file>
+        <file>themes/tricolor.json</file>
+        <file>themes/check.svg</file>
+        <file>themes/chevron.svg</file>
+        <file>themes/chevron-up.svg</file>
+    <file>navigation/EGM.dat</file>
+    </qresource>
+</RCC>

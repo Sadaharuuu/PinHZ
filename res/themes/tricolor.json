@@ -1,0 +1,10 @@
+{
+  "background": "#303030", "surface": "#3d3d3d", "panel": "#353535",
+  "alternate": "#424242", "border": "#565656", "text": "#eeeeee",
+  "muted": "#a0a0a0", "accent": "#FF8C00", "accentHover": "#ffa329",
+  "selection": "#244f50", "hover": "#46413a", "header": "#484848",
+  "success": "#8ed0a3", "warning": "#FF8C00", "error": "#ff8f95",
+  "teal": "#00B3B3", "purple": "#8A2BE2", "accentText": "#21170b",
+  "focus": "#00B3B3", "badge": "#8A2BE2", "badgeText": "#ffffff",
+  "secondarySurface": "#8A2BE2", "secondaryText": "#ffffff", "secondaryBorder": "#8A2BE2"
+}

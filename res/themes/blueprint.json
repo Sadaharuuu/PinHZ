@@ -1,0 +1,8 @@
+{
+  "background": "#edf2f8", "surface": "#ffffff", "panel": "#f6f8fc",
+  "alternate": "#f3f6fb", "border": "#d7e0ec", "text": "#25364b",
+  "muted": "#8493a8", "accent": "#2864d7", "accentHover": "#1c51b8",
+  "selection": "#dbe9ff", "hover": "#eaf1fd", "header": "#e8eef7",
+  "success": "#16875c", "warning": "#a46315", "error": "#cc4354",
+  "teal": "#15858e", "purple": "#8057c8", "accentText": "#ffffff"
+}
